@@ -1,0 +1,473 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ============================================
+   DESIGN TOKENS — UniFound Design System
+   Triết lý: Tối giản, Có hệ thống, Tự nhiên
+   ============================================ */
+:root {
+  /* Màu cốt lõi — ít màu, dùng đúng chỗ */
+  --red:     #E8392A;   /* Màu báo hiệu "đang mất" */
+  --red-bg:  #FFF3F2;
+  --blue:    #1D6BF3;   /* Màu hành động "nhặt được" */
+  --blue-bg: #EEF4FF;
+  --green:   #16A34A;   /* Trạng thái đã trả */
+  --green-bg:#F0FDF4;
+  --amber:   #D97706;   /* Cảnh báo lâu ngày */
+  --amber-bg:#FFFBEB;
+
+  /* Grayscale */
+  --ink:      #0D0D0D;   /* Đen mực — cho tiêu đề */
+  --prose:    #374151;   /* Xám đậm — body text */
+  --muted:    #6B7280;   /* Caption, label phụ */
+  --border:   #E5E7EB;   /* Viền nhẹ */
+  --surface:  #F9FAFB;   /* Nền ô nhạt */
+  --white:    #FFFFFF;
+
+  /* Nền trang */
+  --bg: #FAFAFA;
+
+  /* Typography */
+  --font-head: 'Space Grotesk', sans-serif;
+  --font-body: 'Be Vietnam Pro', sans-serif;
+
+  /* Spacing scale (8px base) */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  --s9: 96px;
+
+  /* Border radius — có ý kiến, không phải mọi thứ đều tròn */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+
+  /* Shadows — tinh tế, không quá ảo */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:  0 10px 30px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.04);
+}
+
+/* ============================================
+   RESET
+   ============================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg);
+  color: var(--prose);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+}
+
+/* Form elements kế thừa font */
+button, input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+img { max-width: 100%; display: block; }
+
+/* ============================================
+   TYPOGRAPHY — có hệ thống, có nhịp điệu
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-head);
+  color: var(--ink);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.display {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.headline { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; }
+.title    { font-size: 1.25rem; font-weight: 600; }
+.body-lg  { font-size: 1.125rem; line-height: 1.7; }
+.body     { font-size: 1rem; }
+.caption  { font-size: 0.875rem; color: var(--muted); }
+.label    { font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+
+/* ============================================
+   LAYOUT
+   ============================================ */
+.container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 var(--s5);
+}
+
+.container-narrow {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 var(--s5);
+}
+
+.section { padding: var(--s8) 0; }
+
+/* ============================================
+   BUTTONS — 2 loại, 2 bối cảnh
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 10px 20px;
+  border-radius: var(--r-md);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Nút hành động chính */
+.btn-primary {
+  background: var(--ink);
+  color: var(--white);
+  border-color: var(--ink);
+}
+.btn-primary:hover {
+  background: #2D2D2D;
+}
+
+/* Nút chủ sắc đỏ (báo mất/tìm kiếm) */
+.btn-danger {
+  background: var(--red);
+  color: var(--white);
+  border-color: var(--red);
+}
+.btn-danger:hover { background: #C8321F; }
+
+/* Nút chủ sắc xanh (báo nhặt) */
+.btn-blue {
+  background: var(--blue);
+  color: var(--white);
+  border-color: var(--blue);
+}
+.btn-blue:hover { background: #1558D4; }
+
+/* Nút nền trắng, viền nhẹ */
+.btn-ghost {
+  background: var(--white);
+  color: var(--prose);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.btn-ghost:hover {
+  background: var(--surface);
+  border-color: #D1D5DB;
+}
+
+.btn-lg { padding: 14px 28px; font-size: 1rem; border-radius: var(--r-lg); }
+.btn-sm { padding: 7px 14px; font-size: 0.875rem; }
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ============================================
+   FORM ELEMENTS
+   ============================================ */
+.input {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font-weight: 500;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(29,107,243,0.12);
+}
+.input::placeholder { color: var(--muted); font-weight: 400; }
+
+/* Legacy alias - không xóa để không break code cũ */
+.input-field {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font-weight: 500;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input-field:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(29,107,243,0.12);
+}
+
+.form-group { margin-bottom: var(--s5); }
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--s2);
+}
+
+/* ============================================
+   BADGES & TAGS
+   ============================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.badge-red   { background: var(--red-bg);   color: var(--red);   }
+.badge-blue  { background: var(--blue-bg);  color: var(--blue);  }
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-amber { background: var(--amber-bg); color: var(--amber); }
+.badge-gray  { background: var(--surface);  color: var(--muted); }
+
+/* Dot sống động */
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: livePulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   ITEM CARD — Component đặc thù
+   ============================================ */
+.item-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+}
+.item-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+.item-card:hover .item-card-title { color: var(--blue); }
+
+.item-card-img {
+  height: 200px;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.item-card-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.item-card:hover .item-card-img img { transform: scale(1.04); }
+
+.item-card-body { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.item-card-title {
+  font-family: var(--font-head);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+  transition: color 0.15s ease;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.item-card-desc {
+  font-size: 0.875rem;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.item-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* ============================================
+   LEGACY — giữ để không phá các trang cũ
+   ============================================ */
+.split-screen {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+@media (min-width: 768px) {
+  .split-screen { grid-template-columns: 1fr 1.2fr; }
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+}
+.status-badge.found   { background: rgba(232,57,42,0.92); color: white; }
+.status-badge.returned { background: rgba(255,255,255,0.92); color: var(--green); }
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: white;
+  animation: livePulse 1.8s ease-in-out infinite;
+}
+
+.category-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px;
+  background: var(--surface); color: var(--prose);
+  border-radius: var(--r-sm);
+  font-size: 0.8rem; font-weight: 600;
+  border: 1px solid var(--border);
+}
+
+.card-img-wrapper {
+  height: 210px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  margin: 10px 10px 0 10px;
+  background: var(--surface);
+}
+.card-img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+.card-hoverable:hover .card-img-wrapper img { transform: scale(1.05); }
+.card-hoverable:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.card-hoverable { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+
+.item-title { font-size: 1.125rem; font-family: var(--font-head); color: var(--ink); line-height: 1.3; font-weight: 600; }
+.card-hoverable:hover .item-title { color: var(--blue); }
+
+.btn-shimmer-new {
+  display: block; width: 100%;
+  padding: 16px 24px;
+  background: var(--red);
+  color: white;
+  border: none; border-radius: var(--r-lg);
+  font-family: var(--font-head);
+  font-size: 1.125rem; font-weight: 700;
+  cursor: pointer; text-align: center;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.btn-shimmer-new:hover { background: #C8321F; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(232,57,42,0.3); }
+
+.btn-accent {
+  background: var(--red); color: white;
+  border: none; border-radius: var(--r-md);
+  padding: 10px 20px; font-weight: 600;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  transition: background 0.15s;
+}
+.btn-accent:hover { background: #C8321F; }
+
+.animate-reveal { animation: fadeUp 0.5s ease forwards; }
+
+/* ============================================
+   ANIMATIONS — tiết kiệm, có lý do
+   ============================================ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+.flex      { display: flex; }
+.flex-col  { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.gap-2 { gap: var(--s2); }
+.gap-3 { gap: var(--s3); }
+.gap-4 { gap: var(--s4); }
+.gap-5 { gap: var(--s5); }
+
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.text-muted { color: var(--muted); }
+.text-ink   { color: var(--ink); }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.mt-auto { margin-top: auto; }

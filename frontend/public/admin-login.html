@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><title>Auto Login Admin</title></head>
+<body>
+<script>
+  // Inject admin session vào localStorage rồi redirect
+  const adminUser = {
+    id: 1,
+    username: "admin",
+    full_name: "Quản trị viên",
+    khoa: null,
+    nganh: null,
+    khoa_hoc: null,
+    role: "admin"
+  };
+  localStorage.setItem('unifound_user', JSON.stringify(adminUser));
+  window.location.href = '/admin';
+</script>
+<p>Đang đăng nhập...</p>
+</body>
+</html>
