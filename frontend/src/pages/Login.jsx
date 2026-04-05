@@ -83,11 +83,77 @@ const UED_DEPARTMENTS = [
   },
 ];
 
-// Parse khóa học từ MSV (2 chữ số đầu ~ năm入学)
-const parseMSV = (msv) => {
-  if (!msv || msv.length < 2) return "";
-  const yearCode = parseInt(msv.substring(0, 2));
-  return `K${yearCode}`;
+const UED_MAJOR_CODES = {
+  "Giáo dục Mầm non": "7140201",
+  "Giáo dục Tiểu học": "7140202",
+  "Giáo dục Chính trị": "7140205",
+  "Sư phạm Toán học": "7140209",
+  "Sư phạm Tin học": "7140210",
+  "Sư phạm Vật lý": "7140211",
+  "Sư phạm Hóa học": "7140212",
+  "Sư phạm Sinh học": "7140213",
+  "Sư phạm Ngữ văn": "7140217",
+  "Sư phạm Lịch sử": "7140218",
+  "Sư phạm Địa lý": "7140219",
+  "Sư phạm Âm nhạc": "7140221",
+  "Sư phạm Mỹ thuật": "7140222",
+  "Sư phạm Khoa học Tự nhiên": "7140247",
+  "Sư phạm Lịch sử – Địa lý": "7140249",
+  "Sư phạm Tin học và Công nghệ Tiểu học": "7140250",
+  "Công nghệ thông tin": "7480201",
+  "Hóa học": "7420201",
+  "Sinh học (Sinh học ứng dụng)": "7420101",
+  "Vật lý học": "7420102",
+  "Văn học": "7220115",
+  "Lịch sử": "7220901",
+  "Địa lý học (Chuyên ngành Địa lý du lịch)": "7220310",
+  "Tâm lý học": "7229040",
+  "Báo chí": "7760101",
+  "Công tác Xã hội": "7900101",
+  "Khoa học môi trường": "7440301",
+  "Quản lý Tài nguyên – Môi trường": "7850101",
+  "Việt Nam học (Văn hóa du lịch)": "7310630",
+};
+
+// Map ma nganh noi bo (BBB trong MSSV 31BBBCCDDD) -> khoa/nganh day du.
+// Bo sung them ma khi nha truong cong bo day du bang ma chinh thuc.
+const UED_MSSV_MAJOR_MAP = {
+  101: {
+    khoa: "Khoa Xã hội & Quản lý",
+    nganh: "Công tác Xã hội",
+  },
+  201: {
+    khoa: "Khoa Giáo dục",
+    nganh: "Giáo dục Tiểu học",
+  },
+  202: {
+    khoa: "Khoa Công nghệ & Khoa học Cơ bản",
+    nganh: "Công nghệ thông tin",
+  },
+  203: {
+    khoa: "Khoa Công nghệ & Khoa học Cơ bản",
+    nganh: "Khoa học dữ liệu",
+  },
+  219: {
+    khoa: "Khoa Khoa học Xã hội & Nhân văn",
+    nganh: "Sư phạm Ngữ văn",
+  },
+};
+
+const parseMssvDetails = (mssv) => {
+  if (!/^\d{10}$/.test(mssv)) return null;
+  const schoolCode = mssv.slice(0, 2);
+  const majorCode = mssv.slice(2, 5);
+  const intakeCode = mssv.slice(5, 7);
+  const serial = mssv.slice(7, 10);
+  return {
+    schoolCode,
+    majorCode,
+    intakeCode,
+    serial,
+    khoaHoc: `K${intakeCode}`,
+    majorInfo: UED_MSSV_MAJOR_MAP[majorCode] || null,
+  };
 };
 
 const Login = () => {
@@ -95,14 +161,16 @@ const Login = () => {
   const [showPass, setShowPass] = useState(false);
 
   // Login fields
-  const [msv, setMsv] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
 
   // Register fields
+  const [email, setEmail] = useState("");
   const [regMsv, setRegMsv] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regPassword2, setRegPassword2] = useState("");
   const [fullName, setFullName] = useState("");
+  const [isUedStudent, setIsUedStudent] = useState(false);
   const [selectedKhoa, setSelectedKhoa] = useState("");
   const [selectedNganh, setSelectedNganh] = useState("");
 
@@ -113,21 +181,20 @@ const Login = () => {
   const { login, register } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Tính khóa học tự động từ MSV
-  const khoaHoc = parseMSV(regMsv);
+  const mssvDetails = parseMssvDetails(regMsv);
   const availableNganh =
     UED_DEPARTMENTS.find((d) => d.khoa === selectedKhoa)?.nganh || [];
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    if (!msv || !password) {
+    if (!loginIdentifier || !password) {
       setError("Vui lòng nhập đầy đủ thông tin.");
       return;
     }
     setLoading(true);
     try {
-      const loggedInUser = await login(msv, password);
+      const loggedInUser = await login(loginIdentifier, password);
       if (loggedInUser.role === "admin") navigate("/admin");
       else navigate("/");
     } catch (err) {
@@ -139,8 +206,16 @@ const Login = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
-    if (!/^\d{12}$/.test(regMsv)) {
-      setError("Mã sinh viên phải là 12 chữ số.");
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Email không hợp lệ.");
+      return;
+    }
+    if (!/^\d{10}$/.test(regMsv)) {
+      setError("Mã số sinh viên phải gồm đúng 10 chữ số.");
+      return;
+    }
+    if (!regMsv.startsWith("31")) {
+      setError("Mã số sinh viên không hợp lệ. 2 số đầu phải là 31 (mã UED).");
       return;
     }
     if (!fullName.trim() || fullName.trim().length < 3) {
@@ -165,17 +240,19 @@ const Login = () => {
     }
     setLoading(true);
     try {
-      const ok = await register(
-        regMsv,
-        regPassword,
-        fullName.trim(),
-        selectedKhoa,
-        selectedNganh,
-      );
+      const ok = await register({
+        email: email.trim(),
+        password: regPassword,
+        full_name: fullName.trim(),
+        is_ued_student: isUedStudent ? true : undefined,
+        khoa: selectedKhoa,
+        nganh: selectedNganh,
+        mssv: regMsv,
+      });
       if (ok) {
         setSuccess("Đăng ký thành công! Đang đăng nhập...");
         setTimeout(async () => {
-          await login(regMsv, regPassword);
+          await login(email.trim(), regPassword);
           navigate("/");
         }, 1200);
       }
@@ -424,20 +501,20 @@ const Login = () => {
                   marginBottom: "28px",
                 }}
               >
-                Sinh viên dùng MSV · Quản trị viên dùng tên tài khoản
+                Sinh viên dùng email · Quản trị viên dùng tài khoản admin
               </p>
 
               <div className="form-group">
                 <label className="form-label">
-                  <GraduationCap size={15} /> Mã sinh viên (MSV)
+                  <User size={15} /> Email hoặc tài khoản admin
                 </label>
                 <input
                   type="text"
                   className="input"
-                  placeholder="MSV 12 chữ số hoặc tên tài khoản"
-                  value={msv}
+                  placeholder="name@ued.udn.vn hoặc admin"
+                  value={loginIdentifier}
                   maxLength={30}
-                  onChange={(e) => setMsv(e.target.value)}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
                   autoComplete="username"
                   style={{ fontFamily: "var(--font-head)", fontSize: "1rem" }}
                 />
@@ -448,7 +525,7 @@ const Login = () => {
                     marginTop: "5px",
                   }}
                 >
-                  Sinh viên: MSV 12 chữ số &nbsp;·&nbsp; Admin:{" "}
+                  Sinh viên: Email UED &nbsp;·&nbsp; Admin:{" "}
                   <code
                     style={{
                       background: "var(--surface)",
@@ -573,28 +650,51 @@ const Login = () => {
                   marginBottom: "24px",
                 }}
               >
-                Chỉ dành cho sinh viên UED · MSV dùng để xác thực danh tính
+                Đăng ký bằng email, thông tin học tập và mã số sinh viên UED
               </p>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <User size={15} /> Gmail
+                </label>
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="example@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </div>
 
               {/* MSV */}
               <div className="form-group">
                 <label className="form-label">
-                  <GraduationCap size={15} /> Mã sinh viên (12 số)
+                  <GraduationCap size={15} /> Mã số sinh viên (10 số)
                 </label>
                 <input
                   type="text"
                   className="input"
-                  placeholder="316011XXXXXX"
+                  placeholder="31BBBCCDDD (ví dụ: 3120223031)"
                   value={regMsv}
-                  maxLength={12}
-                  onChange={(e) => setRegMsv(e.target.value.replace(/\D/g, ""))}
+                  maxLength={10}
+                  onChange={(e) => {
+                    const nextMssv = e.target.value.replace(/\D/g, "");
+                    setRegMsv(nextMssv);
+
+                    const nextDetails = parseMssvDetails(nextMssv);
+                    if (nextDetails?.majorInfo) {
+                      setSelectedKhoa(nextDetails.majorInfo.khoa);
+                      setSelectedNganh(nextDetails.majorInfo.nganh);
+                    }
+                  }}
                   style={{
                     fontFamily: "var(--font-head)",
                     letterSpacing: "0.1em",
                     fontSize: "1.0625rem",
                   }}
                 />
-                {regMsv.length >= 2 && (
+                {mssvDetails && (
                   <div style={{ marginTop: "5px", fontSize: "0.8rem" }}>
                     <span
                       style={{
@@ -605,14 +705,30 @@ const Login = () => {
                         fontWeight: 600,
                       }}
                     >
-                      {khoaHoc}
+                      {mssvDetails.khoaHoc}
                     </span>
                     <span style={{ color: "var(--muted)", marginLeft: "8px" }}>
-                      Tự động nhận diện khóa học
+                      Mã trường: {mssvDetails.schoolCode} · Mã ngành:{" "}
+                      {mssvDetails.majorCode} · STT: {mssvDetails.serial}
                     </span>
+                    <div style={{ marginTop: "6px", color: "var(--ink)" }}>
+                      {mssvDetails.majorInfo ? (
+                        <>
+                          Ngành: <strong>{mssvDetails.majorInfo.nganh}</strong>{" "}
+                          · Khoa: <strong>{mssvDetails.majorInfo.khoa}</strong>{" "}
+                          · Khóa: <strong>{mssvDetails.khoaHoc}</strong>
+                        </>
+                      ) : (
+                        <span style={{ color: "var(--amber)" }}>
+                          Chưa có bảng giải mã đầy đủ cho mã ngành{" "}
+                          {mssvDetails.majorCode}. Vui lòng chọn Khoa/Ngành thủ
+                          công.
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
-                {regMsv.length > 0 && regMsv.length < 12 && (
+                {regMsv.length > 0 && regMsv.length < 10 && (
                   <div
                     style={{
                       marginTop: "5px",
@@ -620,9 +736,30 @@ const Login = () => {
                       color: "var(--muted)",
                     }}
                   >
-                    {12 - regMsv.length} chữ số còn thiếu
+                    {10 - regMsv.length} chữ số còn thiếu
                   </div>
                 )}
+              </div>
+
+              <div className="form-group">
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    fontSize: "0.9rem",
+                    color: "var(--ink)",
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isUedStudent}
+                    onChange={(e) => setIsUedStudent(e.target.checked)}
+                    style={{ width: "16px", height: "16px" }}
+                  />
+                  Bạn có phải là sinh viên của trường UED hay không? (tùy chọn)
+                </label>
               </div>
 
               {/* Họ tên */}
@@ -681,6 +818,7 @@ const Login = () => {
                   {availableNganh.map((n) => (
                     <option key={n} value={n}>
                       {n}
+                      {UED_MAJOR_CODES[n] ? ` (${UED_MAJOR_CODES[n]})` : ""}
                     </option>
                   ))}
                 </select>

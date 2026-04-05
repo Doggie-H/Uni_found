@@ -65,6 +65,18 @@ const Home = () => {
     setCategory(val);
   };
 
+  const runDemoSearch = (kw, catName) => {
+    const val = catName === "Tất cả" ? "" : catName;
+    setKeyword(kw);
+    setCategory(val);
+    fetchItems(kw, val);
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("item-list")
+        ?.scrollIntoView({ behavior: "smooth" });
+    });
+  };
+
   return (
     <div>
       {/* =============================================
@@ -327,6 +339,180 @@ const Home = () => {
                 </button>
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      {/* =============================================
+                DEMO FLOWS
+                ============================================= */}
+      <div style={{ padding: "var(--s7) 0 0" }}>
+        <div
+          className="container"
+          style={{
+            maxWidth: "1160px",
+            margin: "0 auto",
+            padding: "0 var(--s5)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              marginBottom: "16px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2
+                style={{
+                  fontFamily: "var(--font-head)",
+                  fontSize: "1.375rem",
+                  fontWeight: 700,
+                  color: "var(--ink)",
+                  marginBottom: "4px",
+                }}
+              >
+                Luồng demo cho người dùng
+              </h2>
+              <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+                Dùng 2 nút này để mô phỏng đúng hành trình tìm đồ mất và đăng
+                bài nhặt được đồ.
+              </p>
+            </div>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                color: "var(--muted)",
+                fontSize: "0.85rem",
+                background: "var(--surface)",
+                padding: "8px 12px",
+                borderRadius: "999px",
+              }}
+            >
+              <ArrowRight size={14} /> Mở web là có thể thử ngay
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: "16px",
+              marginBottom: "24px",
+            }}
+          >
+            <div
+              style={{
+                background: "var(--white)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-xl)",
+                padding: "20px",
+                boxShadow: "var(--shadow-sm)",
+              }}
+            >
+              <div
+                style={{
+                  color: "var(--blue)",
+                  fontWeight: 700,
+                  marginBottom: "8px",
+                }}
+              >
+                Người dùng vào tìm vật mất
+              </div>
+              <h3
+                style={{
+                  fontFamily: "var(--font-head)",
+                  fontSize: "1.1rem",
+                  marginBottom: "8px",
+                  color: "var(--ink)",
+                }}
+              >
+                Tôi bị mất ví / điện thoại
+              </h3>
+              <p
+                style={{
+                  color: "var(--muted)",
+                  fontSize: "0.9rem",
+                  lineHeight: 1.6,
+                  marginBottom: "14px",
+                }}
+              >
+                Bấm một nút để tự lọc ra đúng nhóm đồ, sau đó mở bài đăng phù
+                hợp và gửi claim nếu trùng khớp.
+              </p>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => runDemoSearch("ví", "Ví/Giấy tờ")}
+                >
+                  Tìm ví bị mất
+                </button>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => runDemoSearch("điện thoại", "Đồ Điện Tử")}
+                >
+                  Tìm điện thoại
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "var(--white)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-xl)",
+                padding: "20px",
+                boxShadow: "var(--shadow-sm)",
+              }}
+            >
+              <div
+                style={{
+                  color: "var(--amber)",
+                  fontWeight: 700,
+                  marginBottom: "8px",
+                }}
+              >
+                Người dùng đăng bài nhặt được đồ
+              </div>
+              <h3
+                style={{
+                  fontFamily: "var(--font-head)",
+                  fontSize: "1.1rem",
+                  marginBottom: "8px",
+                  color: "var(--ink)",
+                }}
+              >
+                Tôi vừa nhặt được món đồ
+              </h3>
+              <p
+                style={{
+                  color: "var(--muted)",
+                  fontSize: "0.9rem",
+                  lineHeight: 1.6,
+                  marginBottom: "14px",
+                }}
+              >
+                Từ đây người dùng sẽ vào form đăng bài, mô tả vị trí và ảnh để
+                chủ nhân có thể nhận ra đồ của mình.
+              </p>
+              <Link
+                to="/create-item"
+                className="btn btn-danger btn-sm"
+                style={{
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                Đăng bài nhặt được đồ <ArrowRight size={14} />
+              </Link>
+            </div>
           </div>
         </div>
       </div>

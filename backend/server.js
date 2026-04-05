@@ -6,6 +6,7 @@ require("dotenv").config();
 
 const { connectDatabase } = require("./database");
 const authRoutes = require("./routes/auth.routes");
+const analyticsRoutes = require("./routes/analytics.routes");
 const itemRoutes = require("./routes/item.routes");
 const claimRoutes = require("./routes/claim.routes");
 const userRoutes = require("./routes/user.routes");
@@ -37,6 +38,7 @@ app.get("/health", (_req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/claims", claimRoutes);
 app.use("/api/users", userRoutes);

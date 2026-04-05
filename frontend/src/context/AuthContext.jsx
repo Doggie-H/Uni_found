@@ -17,9 +17,12 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
-  const login = async (username, password) => {
+  const login = async (identifier, password) => {
     try {
-      const res = await axiosClient.post("/auth/login", { username, password });
+      const res = await axiosClient.post("/auth/login", {
+        identifier,
+        password,
+      });
       localStorage.setItem("unifound_token", res.data.token);
       setUser(res.data.user);
       localStorage.setItem("unifound_user", JSON.stringify(res.data.user));
@@ -32,15 +35,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Register nhận đầy đủ thông tin sinh viên UED
-  const register = async (username, password, full_name, khoa, nganh) => {
+  const register = async ({
+    email,
+    password,
+    full_name,
+    is_ued_student,
+    khoa,
+    nganh,
+    mssv,
+  }) => {
     try {
       await axiosClient.post("/auth/register", {
-        username,
+        email,
         password,
         full_name,
+        is_ued_student,
         khoa,
         nganh,
+        mssv,
       });
       return true;
     } catch (err) {

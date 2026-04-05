@@ -23,6 +23,8 @@ exports.getUsers = (req, res) => {
   if (typeof search === "string" && search.trim()) {
     const term = escapeRegex(search.trim());
     query.$or = [
+      { email: { $regex: term, $options: "i" } },
+      { mssv: { $regex: term, $options: "i" } },
       { username: { $regex: term, $options: "i" } },
       { full_name: { $regex: term, $options: "i" } },
       { khoa: { $regex: term, $options: "i" } },
@@ -43,7 +45,10 @@ exports.getUsers = (req, res) => {
   const mapper = (u) => ({
     id: u._id.toString(),
     username: u.username,
+    email: u.email,
+    mssv: u.mssv,
     full_name: u.full_name,
+    is_ued_student: u.is_ued_student,
     khoa: u.khoa,
     nganh: u.nganh,
     khoa_hoc: u.khoa_hoc,

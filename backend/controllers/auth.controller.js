@@ -2,10 +2,17 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 
-// Validate MSV format UED: 12 chữ số
-const validateMSV = (msv) => {
-  return /^\d{12}$/.test(msv);
-};
+const normalizeEmail = (email) =>
+  String(email || "")
+    .trim()
+    .toLowerCase();
+const normalizeMssv = (mssv) => String(mssv || "").trim();
+
+const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+// MSSV UED format: AA BBB CC DDD (10 digits)
+// AA: 31 (school code), BBB: major internal code, CC: intake year (2 digits), DDD: serial
+const validateMSV = (msv) => /^\d{10}$/.test(msv);
 
 const getValidKhoaHocRange = () => {
   const currentYear = new Date().getFullYear();
@@ -18,9 +25,26 @@ const getValidKhoaHocRange = () => {
 const toKhoaHocCode = (year) => `K${String(year % 100).padStart(2, "0")}`;
 
 // Parse MSV để lấy thông tin khóa học
-// Cấu trúc MSV UED: KKKKNN...(6 đầu = mã khóa/ngành, 6 sau = số thứ tự)
+// Cấu trúc MSSV UED: AA BBB CC DDD
 const parseMSV = (msv) => {
-  const yearCode = parseInt(msv.substring(0, 2)); // 2 số đầu ~ năm cuối (vd: 22 = 2022)
+  if (!validateMSV(msv)) {
+    throw new Error("Ma so sinh vien phai co dung 10 chu so.");
+  }
+
+  const schoolCode = msv.substring(0, 2);
+  const majorCode = msv.substring(2, 5);
+  const yearCode = parseInt(msv.substring(5, 7), 10);
+  const serial = msv.substring(7, 10);
+
+  if (schoolCode !== "31") {
+    throw new Error("Ma so sinh vien khong hop le. Ma truong UED phai la 31.");
+  }
+  if (serial === "000") {
+    throw new Error(
+      "Ma so sinh vien khong hop le. So thu tu khong duoc la 000.",
+    );
+  }
+
   const enrollYear = 2000 + yearCode;
   const khoaHoc = toKhoaHocCode(enrollYear);
   const { minYear, maxYear } = getValidKhoaHocRange();
@@ -30,17 +54,28 @@ const parseMSV = (msv) => {
       `Ma sinh vien khong hop le. Khoa hoc phai nam trong khoang ${toKhoaHocCode(minYear)}-${toKhoaHocCode(maxYear)} (sinh vien hoc toi da 8 nam).`,
     );
   }
-  return { enrollYear, khoaHoc };
+  return { enrollYear, khoaHoc, schoolCode, majorCode, serial };
 };
 
 exports.login = (req, res) => {
-  const { username, password } = req.body;
+  const { identifier, username, email, password } = req.body;
+  const rawIdentifier =
+    typeof identifier === "string"
+      ? identifier
+      : typeof email === "string"
+        ? email
+        : username;
 
-  if (typeof username !== "string" || typeof password !== "string") {
+  if (typeof rawIdentifier !== "string" || typeof password !== "string") {
     return res.status(400).json({ error: "Thong tin dang nhap khong hop le." });
   }
 
-  User.findOne({ username: username.trim() })
+  const normalizedIdentifier = rawIdentifier.trim();
+  const normalizedEmail = normalizeEmail(normalizedIdentifier);
+
+  User.findOne({
+    $or: [{ username: normalizedIdentifier }, { email: normalizedEmail }],
+  })
     .select("+password")
     .then(async (user) => {
       if (!user) {
@@ -68,7 +103,10 @@ exports.login = (req, res) => {
         user: {
           id: user._id.toString(),
           username: user.username,
+          email: user.email,
+          mssv: user.mssv,
           full_name: user.full_name,
+          is_ued_student: user.is_ued_student,
           khoa: user.khoa,
           nganh: user.nganh,
           khoa_hoc: user.khoa_hoc,
@@ -80,30 +118,30 @@ exports.login = (req, res) => {
 };
 
 exports.register = (req, res) => {
-  const { username, password, full_name, khoa, nganh } = req.body;
+  const { email, password, full_name, is_ued_student, khoa, nganh, mssv } =
+    req.body;
 
   if (
-    typeof username !== "string" ||
+    typeof email !== "string" ||
     typeof password !== "string" ||
     typeof full_name !== "string"
   ) {
     return res.status(400).json({ error: "Du lieu dau vao khong hop le." });
   }
 
-  // Admin không cần validate MSV
-  // Sinh viên phải dùng MSV 12 chữ số
-  const normalizedUsername = username.trim();
-  const isAdmin = normalizedUsername === "admin";
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedMssv = normalizeMssv(mssv);
+  const normalizedIsUedStudent =
+    typeof is_ued_student === "boolean" ? is_ued_student : null;
 
-  if (isAdmin) {
-    return res
-      .status(403)
-      .json({ error: "Khong the tu dang ky tai khoan admin." });
+  if (!validateEmail(normalizedEmail)) {
+    return res.status(400).json({ error: "Email khong hop le." });
   }
 
-  if (!validateMSV(normalizedUsername)) {
+  if (!validateMSV(normalizedMssv)) {
     return res.status(400).json({
-      error: "Ma sinh vien khong hop le. MSV UED phai co dung 12 chu so.",
+      error:
+        "Ma so sinh vien khong hop le. MSSV UED phai theo dinh dang AA BBB CC DDD (10 chu so).",
     });
   }
 
@@ -115,9 +153,17 @@ exports.register = (req, res) => {
     return res.status(400).json({ error: "Mat khau phai co it nhat 6 ky tu." });
   }
 
+  if (!khoa || !String(khoa).trim()) {
+    return res.status(400).json({ error: "Vui long chon khoa." });
+  }
+
+  if (!nganh || !String(nganh).trim()) {
+    return res.status(400).json({ error: "Vui long chon nganh hoc." });
+  }
+
   let khoaHoc;
   try {
-    ({ khoaHoc } = parseMSV(normalizedUsername));
+    ({ khoaHoc } = parseMSV(normalizedMssv));
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
@@ -126,11 +172,14 @@ exports.register = (req, res) => {
     .hash(password, 10)
     .then((hashedPassword) =>
       User.create({
-        username: normalizedUsername,
+        username: normalizedMssv,
+        email: normalizedEmail,
+        mssv: normalizedMssv,
         password: hashedPassword,
         full_name: full_name.trim(),
-        khoa: khoa || null,
-        nganh: nganh || null,
+        is_ued_student: normalizedIsUedStudent,
+        khoa: String(khoa).trim(),
+        nganh: String(nganh).trim(),
         khoa_hoc: khoaHoc || null,
         role: "user",
       }),
@@ -141,7 +190,10 @@ exports.register = (req, res) => {
         user: {
           id: newUser._id.toString(),
           username: newUser.username,
+          email: newUser.email,
+          mssv: newUser.mssv,
           full_name: newUser.full_name,
+          is_ued_student: newUser.is_ued_student,
           khoa: newUser.khoa,
           nganh: newUser.nganh,
           khoa_hoc: newUser.khoa_hoc,
@@ -151,8 +203,20 @@ exports.register = (req, res) => {
     })
     .catch((err) => {
       if (err.code === 11000) {
+        const duplicateKey = Object.keys(err.keyPattern || {})[0];
+        if (duplicateKey === "email") {
+          return res.status(400).json({
+            error: "Email nay da duoc su dung. Vui long dung email khac.",
+          });
+        }
+        if (duplicateKey === "mssv" || duplicateKey === "username") {
+          return res.status(400).json({
+            error:
+              "MSSV nay da duoc dang ky. Moi MSSV chi dung cho mot tai khoan.",
+          });
+        }
         return res.status(400).json({
-          error: "MSV nay da duoc dang ky. Moi MSV chi dung cho mot tai khoan.",
+          error: "Thong tin dang ky da ton tai.",
         });
       }
       if (err.name === "ValidationError") {

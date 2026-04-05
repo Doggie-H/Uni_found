@@ -9,6 +9,7 @@ const itemSchema = new mongoose.Schema(
     date_lost_found: { type: String, default: null },
     image_url: { type: String, default: null },
     status: { type: String, enum: ["FOUND", "RETURNED"], default: "FOUND" },
+    returned_at: { type: Date, default: null },
     user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

@@ -53,11 +53,9 @@ exports.createClaim = (req, res) => {
         .lean()
         .then((existingPendingClaim) => {
           if (existingPendingClaim) {
-            return res
-              .status(400)
-              .json({
-                error: "Ban da gui claim cho item nay va dang cho duyet.",
-              });
+            return res.status(400).json({
+              error: "Ban da gui claim cho item nay va dang cho duyet.",
+            });
           }
 
           return Claim.create({
@@ -180,6 +178,7 @@ exports.updateClaimStatus = (req, res) => {
         if (status === "APPROVED") {
           await Item.findByIdAndUpdate(savedClaim.item_id, {
             status: "RETURNED",
+            returned_at: new Date(),
           });
           await Claim.updateMany(
             {

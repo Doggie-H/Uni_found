@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../api/axios-client";
 import { AuthContext } from "../context/AuthContext";
@@ -8,13 +14,14 @@ import {
   Package,
   Users,
   Inbox,
-  TrendingUp,
   Download,
+  Activity,
 } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
 import SurfaceCard from "../components/ui/SurfaceCard";
 import MetricCard from "../components/ui/MetricCard";
 import EmptyState from "../components/ui/EmptyState";
+import AnalyticsChart from "../components/admin/AnalyticsChart";
 import getApiErrorMessage from "../utils/get-api-error-message";
 import {
   getAdminCache,
@@ -27,21 +34,19 @@ const Admin = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const [claims, setClaims] = useState([]);
-  const [stats, setStats] = useState({
-    items: 0,
-    found: 0,
-    returned: 0,
-    users: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const [dashboard, setDashboard] = useState(null);
+  const [claimLoading, setClaimLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [claimPage, setClaimPage] = useState(1);
   const [claimSort, setClaimSort] = useState("created_at:desc");
+  const [analyticsRange, setAnalyticsRange] = useState("month");
   const [claimPagination, setClaimPagination] = useState({
     page: 1,
     totalPages: 1,
     total: 0,
     limit: 10,
   });
+  const initialAnalyticsLoadedRef = useRef(false);
 
   useEffect(() => {
     if (!user || user.role !== "admin") navigate("/");
@@ -59,7 +64,7 @@ const Admin = () => {
 
   const buildClaimCacheKey = (params) => `claims:${JSON.stringify(params)}`;
 
-  const fetchAll = useCallback(
+  const fetchClaims = useCallback(
     async (force = false) => {
       try {
         const claimParams = buildClaimParams();
@@ -75,15 +80,13 @@ const Admin = () => {
           }
         }
 
-        const [claimsRes, itemsRes, usersRes] = await Promise.all([
+        const claimsRes = await Promise.resolve(
           claimData.length > 0
             ? Promise.resolve({
                 data: { data: claimData, pagination: claimPg },
               })
             : axiosClient.get("/claims", { params: claimParams }),
-          axiosClient.get("/items"),
-          axiosClient.get("/users"),
-        ]);
+        );
         const claimsPayload = claimsRes.data;
         claimData = Array.isArray(claimsPayload)
           ? claimsPayload
@@ -97,13 +100,6 @@ const Admin = () => {
         setAdminCache(claimCacheKey, { data: claimData, pagination: claimPg });
         setClaims(claimData);
         setClaimPagination(claimPg);
-        const items = itemsRes.data;
-        setStats({
-          items: items.length,
-          found: items.filter((i) => i.status === "FOUND").length,
-          returned: items.filter((i) => i.status === "RETURNED").length,
-          users: usersRes.data.length,
-        });
       } catch (err) {
         console.error(err);
         alert(
@@ -113,24 +109,65 @@ const Admin = () => {
           ),
         );
       } finally {
-        setLoading(false);
+        setClaimLoading(false);
       }
     },
     [buildClaimParams],
   );
 
-  useEffect(() => {
-    if (user?.role === "admin") {
-      fetchAll();
+  const fetchAnalytics = useCallback(async (range = "month") => {
+    setAnalyticsLoading(true);
+    try {
+      const res = await axiosClient.get("/analytics/admin", {
+        params: { range },
+      });
+      setDashboard(res.data);
+    } catch (err) {
+      console.error(err);
+      alert(
+        getApiErrorMessage(
+          err,
+          "Không thể tải biểu đồ thống kê. Vui lòng thử lại.",
+        ),
+      );
+    } finally {
+      setAnalyticsLoading(false);
+      initialAnalyticsLoadedRef.current = true;
     }
-  }, [user, fetchAll]);
+  }, []);
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    if (initialAnalyticsLoadedRef.current) return;
+
+    const load = async () => {
+      setClaimLoading(true);
+      setAnalyticsLoading(true);
+      await Promise.all([fetchClaims(), fetchAnalytics(analyticsRange)]);
+    };
+
+    load();
+  }, [user, fetchClaims, fetchAnalytics, analyticsRange]);
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    if (!initialAnalyticsLoadedRef.current) return;
+    fetchClaims();
+  }, [fetchClaims, user]);
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    if (!initialAnalyticsLoadedRef.current) return;
+    fetchAnalytics(analyticsRange);
+  }, [analyticsRange, fetchAnalytics, user]);
 
   const handleAction = async (claimId, status) => {
     try {
       await axiosClient.put(`/claims/${claimId}`, { status });
       clearAdminCacheByPrefix("claims:");
       clearAdminCacheByPrefix("items:");
-      fetchAll(true);
+      fetchClaims(true);
+      fetchAnalytics(analyticsRange);
     } catch (err) {
       console.error(err);
       alert(
@@ -221,7 +258,7 @@ const Admin = () => {
     );
   };
 
-  if (loading) {
+  if (claimLoading && analyticsLoading) {
     return (
       <div
         style={{
@@ -244,6 +281,78 @@ const Admin = () => {
         subtitle="Tổng quan hoạt động hệ thống UniFound · UED"
       />
 
+      <SurfaceCard
+        title="Biểu đồ thống kê hoạt động"
+        subtitle={
+          dashboard?.rangeLabel ||
+          "Theo dõi lưu lượng truy cập và vật phẩm theo thời gian"
+        }
+        right={
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {[
+              { value: "day", label: "Ngày" },
+              { value: "week", label: "Tuần" },
+              { value: "month", label: "Tháng" },
+              { value: "year", label: "Năm" },
+            ].map(({ value, label }) => {
+              const active = analyticsRange === value;
+              return (
+                <button
+                  key={value}
+                  onClick={() => setAnalyticsRange(value)}
+                  style={{
+                    padding: "7px 12px",
+                    borderRadius: "999px",
+                    border: active ? "none" : "1px solid var(--border)",
+                    background: active ? "var(--ink)" : "var(--white)",
+                    color: active ? "white" : "var(--muted)",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <Activity size={14} /> {label}
+                </button>
+              );
+            })}
+          </div>
+        }
+      >
+        {analyticsLoading && !dashboard ? (
+          <div
+            style={{
+              minHeight: "320px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--muted)",
+            }}
+          >
+            Đang tải biểu đồ...
+          </div>
+        ) : (
+          <AnalyticsChart
+            buckets={dashboard?.buckets || []}
+            series={[
+              { key: "visits", label: "Lượt truy cập", color: "var(--blue)" },
+              {
+                key: "itemsReported",
+                label: "Bài đăng đồ vật",
+                color: "var(--amber)",
+              },
+              {
+                key: "itemsReturned",
+                label: "Đã tìm được",
+                color: "var(--green)",
+              },
+            ]}
+          />
+        )}
+      </SurfaceCard>
+
       {/* Stats */}
       <div
         style={{
@@ -251,30 +360,31 @@ const Admin = () => {
           gridTemplateColumns: "repeat(4, 1fr)",
           gap: "12px",
           marginBottom: "32px",
+          marginTop: "20px",
         }}
       >
         <MetricCard
-          icon={Package}
-          label="Tổng đồ vật"
-          value={stats.items}
+          icon={Activity}
+          label={`Lượt truy cập ${dashboard?.rangeLabel ? dashboard.rangeLabel.toLowerCase() : "tháng"}`}
+          value={dashboard?.overview?.currentRangeVisits || 0}
           color="var(--blue)"
         />
         <MetricCard
-          icon={TrendingUp}
-          label="Đang chờ trả"
-          value={stats.found}
+          icon={Package}
+          label="Tổng đồ vật"
+          value={dashboard?.overview?.totalItems || 0}
           color="var(--amber)"
         />
         <MetricCard
           icon={CheckCircle2}
-          label="Đã trả về chủ"
-          value={stats.returned}
+          label="Đã tìm được"
+          value={dashboard?.overview?.totalReturnedItems || 0}
           color="var(--green)"
         />
         <MetricCard
           icon={Users}
           label="Tài khoản"
-          value={stats.users}
+          value={dashboard?.overview?.totalUsers || 0}
           color="var(--red)"
         />
       </div>

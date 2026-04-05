@@ -171,6 +171,7 @@ exports.updateItem = (req, res) => {
       if (!item) return res.status(404).json({ error: "Khong tim thay item" });
 
       item.status = status;
+      item.returned_at = status === "RETURNED" ? new Date() : null;
       await item.save();
 
       if (status === "RETURNED") {
