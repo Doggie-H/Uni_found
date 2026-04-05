@@ -259,9 +259,7 @@ const Messages = () => {
                 </div>
 
                 {selectedConversation.claim &&
-                  ["CONNECTED"].includes(
-                    selectedConversation.claim.status,
-                  ) && (
+                  ["CONNECTED"].includes(selectedConversation.claim.status) && (
                     <button
                       className="btn btn-ghost btn-sm"
                       onClick={handleConfirmReturn}
