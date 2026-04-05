@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import { LogOut, PlusCircle, Shield } from "lucide-react";
+import { LogOut, PlusCircle, Shield, MessageCircle } from "lucide-react";
 import BrandMark from "../components/ui/BrandMark";
 
 const MainLayout = () => {
@@ -129,6 +129,19 @@ const MainLayout = () => {
                     <Shield size={14} /> Quản trị
                   </Link>
                 )}
+
+                <Link
+                  to="/messages"
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    textDecoration: "none",
+                  }}
+                >
+                  <MessageCircle size={14} /> Nhắn tin
+                </Link>
 
                 {/* CTA chính */}
                 <Link

@@ -39,6 +39,8 @@ const Admin = () => {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [claimPage, setClaimPage] = useState(1);
   const [claimSort, setClaimSort] = useState("created_at:desc");
+  const [returnRecords, setReturnRecords] = useState([]);
+  const [returnLoading, setReturnLoading] = useState(true);
   const [analyticsRange, setAnalyticsRange] = useState("month");
   const [visits, setVisits] = useState([]);
   const [visitLoading, setVisitLoading] = useState(true);
@@ -217,6 +219,21 @@ const Admin = () => {
     [buildVisitParams],
   );
 
+  const fetchReturnRecords = useCallback(async () => {
+    setReturnLoading(true);
+    try {
+      const res = await axiosClient.get("/claims/return-records");
+      setReturnRecords(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+      alert(
+        getApiErrorMessage(err, "Không thể tải danh sách xác nhận hoàn trả."),
+      );
+    } finally {
+      setReturnLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user?.role !== "admin") return;
     if (initialAnalyticsLoadedRef.current) return;
@@ -228,11 +245,19 @@ const Admin = () => {
         fetchClaims(),
         fetchAnalytics(analyticsRange),
         fetchVisits(),
+        fetchReturnRecords(),
       ]);
     };
 
     load();
-  }, [user, fetchClaims, fetchAnalytics, fetchVisits, analyticsRange]);
+  }, [
+    user,
+    fetchClaims,
+    fetchAnalytics,
+    fetchVisits,
+    fetchReturnRecords,
+    analyticsRange,
+  ]);
 
   useEffect(() => {
     if (user?.role !== "admin") return;
@@ -251,24 +276,6 @@ const Admin = () => {
     if (!initialAnalyticsLoadedRef.current) return;
     fetchVisits();
   }, [fetchVisits, user]);
-
-  const handleAction = async (claimId, status) => {
-    try {
-      await axiosClient.put(`/claims/${claimId}`, { status });
-      clearAdminCacheByPrefix("claims:");
-      clearAdminCacheByPrefix("items:");
-      fetchClaims(true);
-      fetchAnalytics(analyticsRange);
-    } catch (err) {
-      console.error(err);
-      alert(
-        getApiErrorMessage(
-          err,
-          "Không thể xử lý yêu cầu nhận đồ. Vui lòng thử lại.",
-        ),
-      );
-    }
-  };
 
   const handleExportCsv = async () => {
     try {
@@ -351,8 +358,8 @@ const Admin = () => {
     }
   };
 
-  const pendingClaims = claims.filter((c) => c.status === "PENDING");
-  const processedClaims = claims.filter((c) => c.status !== "PENDING");
+  const pendingClaims = claims.filter((c) => c.status === "CONNECTED");
+  const processedClaims = claims.filter((c) => c.status === "RETURN_CONFIRMED");
 
   const statusBadge = (status) => {
     const map = {
@@ -361,8 +368,18 @@ const Admin = () => {
         bg: "var(--amber-bg)",
         color: "var(--amber)",
       },
+      CONNECTED: {
+        label: "Đang trao đổi",
+        bg: "var(--blue-bg)",
+        color: "var(--blue)",
+      },
       APPROVED: {
         label: "Đã duyệt",
+        bg: "var(--green-bg)",
+        color: "var(--green)",
+      },
+      RETURN_CONFIRMED: {
+        label: "Đã hoàn trả",
         bg: "var(--green-bg)",
         color: "var(--green)",
       },
@@ -565,8 +582,8 @@ const Admin = () => {
 
       <div style={{ marginBottom: "20px" }}>
         <SurfaceCard
-          title="Yêu cầu chờ duyệt"
-          subtitle={`${pendingClaims.length} yêu cầu cần xử lý`}
+          title="Yêu cầu nhận đồ đang xử lý"
+          subtitle={`${pendingClaims.length} yêu cầu đang trao đổi`}
           right={
             pendingClaims.length > 0 ? (
               <span
@@ -599,7 +616,7 @@ const Admin = () => {
                     "Người yêu cầu",
                     "Bằng chứng",
                     "Ngày gửi",
-                    "Hành động",
+                    "Trạng thái",
                   ].map((h) => (
                     <th
                       key={h}
@@ -704,46 +721,7 @@ const Admin = () => {
                       {new Date(claim.created_at).toLocaleDateString("vi-VN")}
                     </td>
                     <td style={{ padding: "14px 16px" }}>
-                      <div style={{ display: "flex", gap: "6px" }}>
-                        <button
-                          onClick={() => handleAction(claim.id, "APPROVED")}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            padding: "6px 12px",
-                            borderRadius: "6px",
-                            border: "none",
-                            background: "var(--green-bg)",
-                            color: "var(--green)",
-                            fontWeight: 600,
-                            fontSize: "0.8rem",
-                            cursor: "pointer",
-                            transition: "background 0.15s",
-                          }}
-                        >
-                          <CheckCircle2 size={14} /> Duyệt
-                        </button>
-                        <button
-                          onClick={() => handleAction(claim.id, "REJECTED")}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "5px",
-                            padding: "6px 12px",
-                            borderRadius: "6px",
-                            border: "none",
-                            background: "var(--red-bg)",
-                            color: "var(--red)",
-                            fontWeight: 600,
-                            fontSize: "0.8rem",
-                            cursor: "pointer",
-                            transition: "background 0.15s",
-                          }}
-                        >
-                          <XCircle size={14} /> Từ chối
-                        </button>
-                      </div>
+                      {statusBadge(claim.status)}
                     </td>
                   </tr>
                 ))}
@@ -828,6 +806,101 @@ const Admin = () => {
         >
           Trang sau
         </button>
+      </div>
+
+      <div style={{ marginTop: "28px", marginBottom: "20px" }}>
+        <SurfaceCard
+          title="Lịch sử hoàn trả đã xác nhận"
+          subtitle="Danh sách vật phẩm đã được người tìm và bên giữ xác nhận"
+          bodyPadding="0"
+        >
+          {returnLoading ? (
+            <div
+              style={{
+                padding: "16px",
+                color: "var(--muted)",
+                fontSize: "0.9rem",
+              }}
+            >
+              Đang tải lịch sử hoàn trả...
+            </div>
+          ) : returnRecords.length === 0 ? (
+            <EmptyState icon={CheckCircle2} text="Chưa có bản ghi hoàn trả" />
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "var(--surface)" }}>
+                    {[
+                      "Món đồ",
+                      "Người nhận",
+                      "Khoa/Ngành",
+                      "Luồng",
+                      "Thời điểm",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          padding: "10px 12px",
+                          textAlign: "left",
+                          fontSize: "0.76rem",
+                          fontWeight: 700,
+                          color: "var(--muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {returnRecords.map((record) => (
+                    <tr
+                      key={record.id}
+                      style={{ borderTop: "1px solid var(--border)" }}
+                    >
+                      <td style={{ padding: "12px", fontWeight: 600 }}>
+                        {record.item_title}
+                      </td>
+                      <td style={{ padding: "12px" }}>{record.seeker_name}</td>
+                      <td style={{ padding: "12px", color: "var(--muted)" }}>
+                        {record.seeker_khoa || "-"}
+                        {record.seeker_nganh ? ` · ${record.seeker_nganh}` : ""}
+                      </td>
+                      <td style={{ padding: "12px" }}>
+                        <span
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: "999px",
+                            background:
+                              record.custody_type === "ADMIN"
+                                ? "var(--amber-bg)"
+                                : "var(--blue-bg)",
+                            color:
+                              record.custody_type === "ADMIN"
+                                ? "var(--amber)"
+                                : "var(--blue)",
+                            fontWeight: 700,
+                            fontSize: "0.78rem",
+                          }}
+                        >
+                          {record.custody_type === "ADMIN"
+                            ? "Tìm - Admin"
+                            : "Tìm - Người nhặt"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px", color: "var(--muted)" }}>
+                        {formatDateTime(record.returned_confirmed_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SurfaceCard>
       </div>
 
       <div style={{ marginTop: "26px", marginBottom: "14px" }}>

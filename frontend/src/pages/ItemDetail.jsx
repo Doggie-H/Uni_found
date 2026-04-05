@@ -53,20 +53,29 @@ const ItemDetail = () => {
     e.preventDefault();
     if (!claimDesc || claimDesc.trim().length < 10) {
       alert(
-        "Vui lòng nhập mô tả chứng minh món đồ này là của bạn (ít nhất 10 ký tự).",
+        item?.post_type === "LOST"
+          ? "Vui lòng nhập mô tả cách bạn nhặt được vật phẩm (ít nhất 10 ký tự)."
+          : "Vui lòng nhập mô tả chứng minh món đồ này là của bạn (ít nhất 10 ký tự).",
       );
       return;
     }
 
     setSubmitting(true);
     try {
-      await axiosClient.post("/claims", {
+      const res = await axiosClient.post("/claims", {
         item_id: item.id,
         description: claimDesc.trim(),
       });
-      alert("Yêu cầu nhận đồ đã được gửi thành công!");
+      const conversationId = res.data?.conversation_id;
+      alert(
+        res.data?.message ||
+          "Yêu cầu đã được ghi nhận. Bạn có thể trao đổi tại mục Nhắn tin.",
+      );
       setShowClaimForm(false);
       setClaimDesc("");
+      if (conversationId) {
+        navigate(`/messages?conversation=${conversationId}`);
+      }
     } catch (error) {
       console.error(error);
       alert(getApiErrorMessage(error, "Lỗi khi gửi yêu cầu."));
@@ -102,7 +111,17 @@ const ItemDetail = () => {
     );
 
   const isFound = item.status === "FOUND";
+  const isLostPost = item.post_type === "LOST";
   const isOwner = !!user && item.user_id === user.id;
+  const ownerLabel = isLostPost ? "Người mất" : "Người nhặt";
+  const ownerName =
+    item.posted_by?.full_name || item.posted_by?.username || "Chưa rõ";
+  const ownerProfile = [item.posted_by?.khoa, item.posted_by?.nganh]
+    .filter(Boolean)
+    .join(" · ");
+  const eventDateValue = isLostPost
+    ? item.lost_at || item.date_lost_found
+    : item.found_at || item.date_lost_found;
 
   return (
     <div className="container page-shell" style={{ paddingTop: "2rem" }}>
@@ -161,7 +180,11 @@ const ItemDetail = () => {
               }}
             >
               {isFound && <span className="status-dot"></span>}
-              {isFound ? "ĐANG THẤT LẠC" : "ĐÃ ĐƯỢC TRẢ"}
+              {isFound
+                ? isLostPost
+                  ? "ĐANG TÌM ĐỒ"
+                  : "ĐANG CHỜ NHẬN LẠI"
+                : "ĐÃ HOÀN TẤT"}
             </span>
           </div>
         </div>
@@ -189,6 +212,23 @@ const ItemDetail = () => {
             }}
           >
             <Tag size={16} /> {normalizeCategory(item.category)}
+          </div>
+
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "5px 10px",
+              borderRadius: "999px",
+              fontWeight: 700,
+              fontSize: "0.78rem",
+              color: isLostPost ? "var(--amber)" : "var(--blue)",
+              background: isLostPost ? "var(--amber-bg)" : "var(--blue-bg)",
+              width: "fit-content",
+              marginBottom: "1rem",
+            }}
+          >
+            {isLostPost ? "Bài đăng tìm đồ" : "Bài đăng nhặt được đồ"}
           </div>
 
           <h2
@@ -225,7 +265,155 @@ const ItemDetail = () => {
           >
             {item.description ||
               "Chưa có mô tả chi tiết. Vui lòng dựa vào ảnh và vị trí để nhận diện."}
+            <div
+              style={{
+                marginTop: "12px",
+                fontSize: "0.9rem",
+                color: "var(--muted)",
+                fontWeight: 500,
+              }}
+            >
+              {isLostPost
+                ? "Đây là bài đăng của người bị mất đồ. Nếu bạn đã nhặt được, hãy gửi yêu cầu trao đổi."
+                : item.custody_type === "ADMIN"
+                  ? "Vật phẩm đang được gửi tại khoa/admin: người tìm sẽ trao đổi và xin duyệt với admin."
+                  : "Vật phẩm đang do người nhặt giữ: người tìm sẽ nhắn tin trực tiếp với người nhặt."}
+            </div>
           </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: "12px",
+              marginBottom: "1.5rem",
+              padding: "12px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "10px",
+            }}
+          >
+            <div style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "var(--muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.02em",
+                  marginBottom: "4px",
+                }}
+              >
+                {ownerLabel}
+              </div>
+              <div style={{ color: "var(--ink)", fontWeight: 500 }}>
+                {ownerName}
+              </div>
+              {ownerProfile ? (
+                <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
+                  {ownerProfile}
+                </div>
+              ) : null}
+            </div>
+            <div style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "var(--muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.02em",
+                  marginBottom: "4px",
+                }}
+              >
+                Nhãn hiệu
+              </div>
+              <div style={{ color: "var(--ink)", fontWeight: 500 }}>
+                {item.brand || "-"}
+              </div>
+            </div>
+            <div style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "var(--muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.02em",
+                  marginBottom: "4px",
+                }}
+              >
+                Màu sắc
+              </div>
+              <div style={{ color: "var(--ink)", fontWeight: 500 }}>
+                {item.color || "-"}
+              </div>
+            </div>
+            <div style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "var(--muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.02em",
+                  marginBottom: "4px",
+                }}
+              >
+                Liên hệ
+              </div>
+              <div style={{ color: "var(--ink)", fontWeight: 500 }}>
+                {item.contact_info || "-"}
+              </div>
+            </div>
+          </div>
+
+          {item.distinctive_features ? (
+            <div
+              style={{
+                marginBottom: "1.2rem",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "10px",
+                padding: "10px 12px",
+                color: "var(--prose)",
+                fontSize: "0.92rem",
+              }}
+            >
+              <strong style={{ color: "var(--ink)" }}>
+                Đặc điểm nhận dạng:
+              </strong>{" "}
+              {item.distinctive_features}
+            </div>
+          ) : null}
+
+          {Array.isArray(item.category_checklist) &&
+          item.category_checklist.length ? (
+            <div
+              style={{
+                marginBottom: "1rem",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "10px",
+                padding: "10px 12px",
+              }}
+            >
+              <strong style={{ color: "var(--ink)" }}>
+                Checklist xác minh:
+              </strong>
+              <ul
+                style={{
+                  margin: "8px 0 0",
+                  paddingLeft: "18px",
+                  color: "var(--prose)",
+                }}
+              >
+                {item.category_checklist.map((it, idx) => (
+                  <li key={`${idx}-${it}`}>{it}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="detail-info-grid">
             <div className="detail-info-item">
@@ -270,7 +458,7 @@ const ItemDetail = () => {
                     marginBottom: "4px",
                   }}
                 >
-                  Ngày xảy ra (Mất/Nhặt)
+                  {isLostPost ? "Thời điểm bị mất" : "Thời điểm nhặt được"}
                 </div>
                 <div
                   style={{
@@ -279,7 +467,7 @@ const ItemDetail = () => {
                     color: "var(--ink)",
                   }}
                 >
-                  {item.date_lost_found ||
+                  {eventDateValue ||
                     new Date(item.created_at).toLocaleDateString("vi-VN")}
                 </div>
               </div>
@@ -303,7 +491,9 @@ const ItemDetail = () => {
                     }
                   }}
                 >
-                  ĐÂY CHÍNH LÀ ĐỒ GIÚP TÔI! 👋
+                  {isLostPost
+                    ? "TÔI ĐÃ NHẶT ĐƯỢC VẬT PHẨM NÀY"
+                    : "ĐÂY CHÍNH LÀ ĐỒ CỦA TÔI"}
                 </button>
               ) : (
                 <form
@@ -332,8 +522,11 @@ const ItemDetail = () => {
                       fontWeight: 500,
                     }}
                   >
-                    Hãy miêu tả chi tiết (mật khẩu điện thoại, hình nền, thẻ
-                    trong ví...) để Admin kiểm chứng.
+                    {isLostPost
+                      ? "Hãy mô tả bằng chứng bạn đã nhặt được món đồ này (địa điểm, thời điểm, tình trạng...) để người đăng xác thực."
+                      : item.custody_type === "ADMIN"
+                        ? "Hãy miêu tả chi tiết để admin kiểm chứng trước khi duyệt."
+                        : "Hãy miêu tả chi tiết để người nhặt đối chiếu khi trao đổi."}
                   </p>
                   <textarea
                     className="input-field"

@@ -13,24 +13,100 @@ const getSortOption = (sortBy, order, allowed) => {
   return { [key]: direction };
 };
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const PHONE_RE = /(?:\+84|0)(?:3|5|7|8|9)\d{8}\b/;
+const URL_RE = /^https?:\/\//i;
+
+const isValidContactInfo = (value) => {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return (
+    EMAIL_RE.test(trimmed) ||
+    PHONE_RE.test(trimmed.replace(/[\s.-]/g, "")) ||
+    URL_RE.test(trimmed) ||
+    /^@[a-zA-Z0-9_.]{3,}$/.test(trimmed)
+  );
+};
+
+const normalizeChecklist = (raw) => {
+  if (!raw) return [];
+
+  let parsed = raw;
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean)
+    .slice(0, 12);
+};
+
+const getOwnerId = (userRef) => {
+  if (!userRef) return null;
+  if (typeof userRef === "string") return userRef;
+  if (userRef._id) return userRef._id.toString();
+  return userRef.toString ? userRef.toString() : null;
+};
+
+const toPostedBy = (userRef) => {
+  if (!userRef || typeof userRef !== "object") return null;
+  return {
+    id: userRef._id?.toString?.() || null,
+    username: userRef.username || null,
+    full_name: userRef.full_name || null,
+    khoa: userRef.khoa || null,
+    nganh: userRef.nganh || null,
+    khoa_hoc: userRef.khoa_hoc || null,
+  };
+};
+
 const toClientItem = (item) => ({
   id: item._id.toString(),
   title: item.title,
+  post_type: item.post_type || "FOUND",
   category: item.category,
   description: item.description,
+  brand: item.brand || "",
+  color: item.color || "",
+  distinctive_features: item.distinctive_features || "",
+  contact_info: item.contact_info || "",
+  lost_at: item.lost_at || null,
+  found_at: item.found_at || null,
+  category_checklist: Array.isArray(item.category_checklist)
+    ? item.category_checklist
+    : [],
   location: item.location,
   date_lost_found: item.date_lost_found,
   image_url: item.image_url,
+  custody_type: item.custody_type || "FINDER",
   status: item.status,
-  user_id: item.user_id?.toString ? item.user_id.toString() : item.user_id,
+  user_id: getOwnerId(item.user_id),
+  posted_by: toPostedBy(item.user_id),
   created_at: item.created_at,
 });
 
 // Lấy danh sách items, có tìm kiếm + lọc danh mục
 exports.getItems = (req, res) => {
-  const { keyword, location, category, status, page, limit, sortBy, order } =
-    req.query;
-  const query = {};
+  const {
+    keyword,
+    location,
+    category,
+    status,
+    post_type,
+    page,
+    limit,
+    sortBy,
+    order,
+  } = req.query;
+  const query = { approval_status: "APPROVED" };
 
   if (typeof keyword === "string" && keyword.trim()) {
     query.title = { $regex: escapeRegex(keyword.trim()), $options: "i" };
@@ -43,6 +119,9 @@ exports.getItems = (req, res) => {
   }
   if (typeof status === "string" && ["FOUND", "RETURNED"].includes(status)) {
     query.status = status;
+  }
+  if (typeof post_type === "string" && ["FOUND", "LOST"].includes(post_type)) {
+    query.post_type = post_type;
   }
 
   const hasPagination = page !== undefined || limit !== undefined;
@@ -57,6 +136,7 @@ exports.getItems = (req, res) => {
 
   if (!hasPagination) {
     return Item.find(query)
+      .populate("user_id", "username full_name khoa nganh khoa_hoc")
       .sort(sort)
       .lean()
       .then((rows) => res.json(rows.map(toClientItem)))
@@ -65,6 +145,7 @@ exports.getItems = (req, res) => {
 
   Promise.all([
     Item.find(query)
+      .populate("user_id", "username full_name khoa nganh khoa_hoc")
       .sort(sort)
       .skip((safePage - 1) * safeLimit)
       .limit(safeLimit)
@@ -93,6 +174,7 @@ exports.getItemDetail = (req, res) => {
   }
 
   Item.findById(id)
+    .populate("user_id", "username full_name khoa nganh khoa_hoc")
     .lean()
     .then((row) => {
       if (!row) return res.status(404).json({ message: "Khong tim thay item" });
@@ -103,10 +185,25 @@ exports.getItemDetail = (req, res) => {
 
 // Tạo 1 item mới
 exports.createItem = (req, res) => {
-  const { title, category, description, location, date_lost_found, image_url } =
-    req.body;
+  const {
+    title,
+    post_type,
+    category,
+    description,
+    brand,
+    color,
+    distinctive_features,
+    contact_info,
+    lost_at,
+    found_at,
+    category_checklist,
+    location,
+    date_lost_found,
+    image_url,
+    custody_type,
+  } = req.body;
 
-  if (!title || !location || !date_lost_found) {
+  if (!title || !location) {
     return res.status(400).json({ error: "Thieu thong tin bat buoc." });
   }
 
@@ -119,29 +216,118 @@ exports.createItem = (req, res) => {
     return res.status(400).json({ error: "Vi tri phai tu 3 den 200 ky tu." });
   }
 
-  const parsedDate = new Date(date_lost_found);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return res.status(400).json({ error: "Ngay nhat/mat do khong hop le." });
+  const normalizedDescription =
+    typeof description === "string" ? description.trim() : "";
+  if (
+    normalizedDescription.length < 20 ||
+    normalizedDescription.length > 1500
+  ) {
+    return res.status(400).json({
+      error: "Mo ta chi tiet phai tu 20 den 1500 ky tu.",
+    });
   }
+
+  const normalizedFeatures =
+    typeof distinctive_features === "string" ? distinctive_features.trim() : "";
+  if (normalizedFeatures.length < 10 || normalizedFeatures.length > 1000) {
+    return res.status(400).json({
+      error: "Dac diem nhan dang phai tu 10 den 1000 ky tu.",
+    });
+  }
+
+  const normalizedContact =
+    typeof contact_info === "string" ? contact_info.trim() : "";
+  if (normalizedContact.length < 8 || normalizedContact.length > 200) {
+    return res.status(400).json({
+      error: "Thong tin lien he phai tu 8 den 200 ky tu.",
+    });
+  }
+  if (!isValidContactInfo(normalizedContact)) {
+    return res.status(400).json({
+      error:
+        "Thong tin lien he phai la email, so dien thoai, URL hoac @username hop le.",
+    });
+  }
+
   const today = new Date();
   today.setHours(23, 59, 59, 999);
-  if (parsedDate > today) {
-    return res
-      .status(400)
-      .json({ error: "Ngay nhat/mat do khong the nam trong tuong lai." });
+
+  const uploadedImageUrl = req.file
+    ? `${req.protocol}://${req.get("host")}/uploads/items/${req.file.filename}`
+    : null;
+
+  const normalizedImageUrl =
+    uploadedImageUrl ||
+    (typeof image_url === "string" && image_url.trim()
+      ? image_url.trim()
+      : null);
+  const normalizedCustodyType = ["FINDER", "ADMIN"].includes(custody_type)
+    ? custody_type
+    : "FINDER";
+  const normalizedPostType = ["FOUND", "LOST"].includes(post_type)
+    ? post_type
+    : "FOUND";
+  const resolvedCustodyType =
+    normalizedPostType === "LOST" ? "FINDER" : normalizedCustodyType;
+
+  const normalizedLostAt =
+    typeof lost_at === "string" && lost_at.trim() ? lost_at.trim() : null;
+  const normalizedFoundAt =
+    typeof found_at === "string" && found_at.trim() ? found_at.trim() : null;
+
+  const primaryDate =
+    normalizedPostType === "LOST" ? normalizedLostAt : normalizedFoundAt;
+
+  const fallbackDate =
+    typeof date_lost_found === "string" && date_lost_found.trim()
+      ? date_lost_found.trim()
+      : null;
+
+  const dateValue = primaryDate || fallbackDate;
+  if (!dateValue) {
+    return res.status(400).json({
+      error:
+        normalizedPostType === "LOST"
+          ? "Vui long cung cap thoi diem bi mat do."
+          : "Vui long cung cap thoi diem nhat duoc do.",
+    });
+  }
+
+  const parsedEventDate = new Date(dateValue);
+  if (Number.isNaN(parsedEventDate.getTime())) {
+    return res.status(400).json({
+      error: "Thoi diem mat/nhat do khong hop le.",
+    });
+  }
+  if (parsedEventDate > today) {
+    return res.status(400).json({
+      error: "Thoi diem mat/nhat do khong the nam trong tuong lai.",
+    });
+  }
+
+  const normalizedChecklist = normalizeChecklist(category_checklist);
+  if (normalizedChecklist.length < 2) {
+    return res.status(400).json({
+      error: "Checklist theo danh muc can it nhat 2 muc thong tin.",
+    });
   }
 
   Item.create({
     title: normalizedTitle,
+    post_type: normalizedPostType,
     category: category || "Khác",
-    description:
-      typeof description === "string" ? description.trim().slice(0, 1500) : "",
+    description: normalizedDescription,
+    brand: typeof brand === "string" ? brand.trim().slice(0, 120) : "",
+    color: typeof color === "string" ? color.trim().slice(0, 80) : "",
+    distinctive_features: normalizedFeatures,
+    contact_info: normalizedContact,
+    lost_at: normalizedPostType === "LOST" ? dateValue : null,
+    found_at: normalizedPostType === "FOUND" ? dateValue : null,
+    category_checklist: normalizedChecklist,
     location: normalizedLocation,
-    date_lost_found,
-    image_url:
-      typeof image_url === "string" && image_url.trim()
-        ? image_url.trim()
-        : null,
+    date_lost_found: dateValue,
+    image_url: normalizedImageUrl,
+    custody_type: resolvedCustodyType,
     user_id: req.user.id,
     status: "FOUND",
   })
@@ -176,13 +362,57 @@ exports.updateItem = (req, res) => {
 
       if (status === "RETURNED") {
         await Claim.updateMany(
-          { item_id: item._id, status: "PENDING" },
-          { $set: { status: "REJECTED" } },
+          { item_id: item._id, status: "CONNECTED" },
+          { $set: { status: "RETURN_CONFIRMED" } },
         );
       }
 
       return res.json({ message: "Cap nhat thanh cong" });
     })
+    .catch((err) => res.status(500).json({ error: err.message }));
+};
+
+// Duyet/reject item (dành cho admin) - control visibility
+exports.approveItem = (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(404).json({ error: "Item khong hop le" });
+  }
+
+  Item.findByIdAndUpdate(id, { approval_status: "APPROVED" }, { new: true })
+    .then((item) => {
+      if (!item) return res.status(404).json({ error: "Khong tim thay item" });
+      return res.json({
+        message: "Da duyet item",
+        item_id: item._id.toString(),
+      });
+    })
+    .catch((err) => res.status(500).json({ error: err.message }));
+};
+
+exports.rejectItem = (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(404).json({ error: "Item khong hop le" });
+  }
+
+  Item.findByIdAndUpdate(id, { approval_status: "REJECTED" }, { new: true })
+    .then((item) => {
+      if (!item) return res.status(404).json({ error: "Khong tim thay item" });
+      return res.json({ message: "Da huy item", item_id: item._id.toString() });
+    })
+    .catch((err) => res.status(500).json({ error: err.message }));
+};
+
+// Lay danh sach items can duyet (cho admin)
+exports.getPendingItems = (req, res) => {
+  Item.find({ approval_status: "PENDING" })
+    .populate("user_id", "username full_name khoa nganh khoa_hoc")
+    .sort({ created_at: -1 })
+    .lean()
+    .then((rows) => res.json(rows.map(toClientItem)))
     .catch((err) => res.status(500).json({ error: err.message }));
 };
 

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "demo:reset": "node seed-demo.js",
+    "demo:chat:reset": "node seed-chat-demo.js",
     "cleanup:data": "node cleanup-invalid-data.js",
     "seed:traffic": "node seed-traffic.js",
     "seed:more": "node seed-more-demo.js",
@@ -23,6 +24,7 @@
     "express-rate-limit": "^7.4.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.15.1"
+    "mongoose": "^8.15.1",
+    "multer": "^2.1.1"
   }
 }

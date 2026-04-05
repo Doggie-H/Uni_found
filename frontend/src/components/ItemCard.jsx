@@ -44,45 +44,37 @@ const TimeChip = ({ dateStr, createdAt }) => {
   const days = getDaysAgo(raw);
   if (days === null) return null;
 
-  let bg, color, label;
+  let tone = "cool";
+  let label;
   if (days === 0) {
-    bg = "var(--blue-bg)";
-    color = "var(--blue)";
+    tone = "cool";
     label = "Hôm nay";
   } else if (days <= 3) {
-    bg = "var(--blue-bg)";
-    color = "var(--blue)";
+    tone = "cool";
     label = `${days} ngày trước`;
   } else if (days <= 7) {
-    bg = "var(--amber-bg)";
-    color = "var(--amber)";
+    tone = "warm";
     label = `${days} ngày trước`;
   } else {
-    bg = "var(--red-bg)";
-    color = "var(--red)";
+    tone = "hot";
     label = `${days} ngày trước`;
   }
 
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        padding: "3px 8px",
-        borderRadius: "4px",
-        background: bg,
-        color: color,
-        fontSize: "0.78rem",
-        fontWeight: 700,
-      }}
-    >
+    <span className={`item-chip item-chip-time tone-${tone}`}>
       <Clock size={11} style={{ flexShrink: 0 }} /> {label}
     </span>
   );
 };
 
 const ItemCard = ({ item }) => {
+  const isLostPost = item.post_type === "LOST";
+  const ownerLabel = isLostPost ? "Người mất" : "Người nhặt";
+  const ownerName =
+    item.posted_by?.full_name || item.posted_by?.username || "Chưa rõ";
+  const ownerProfile = [item.posted_by?.khoa, item.posted_by?.nganh]
+    .filter(Boolean)
+    .join(" · ");
   const isFound = item.status === "FOUND";
   const isReturned = item.status === "RETURNED";
   const days = getDaysAgo(item.date_lost_found || item.created_at);
@@ -115,71 +107,18 @@ const ItemCard = ({ item }) => {
           )}
 
           {/* Status badge góc ảnh */}
-          <div
-            style={{
-              position: "absolute",
-              top: "10px",
-              left: "10px",
-              display: "flex",
-              gap: "6px",
-            }}
-          >
+          <div className="item-card-status-stack">
             {isUrgent && (
-              <span
-                style={{
-                  background: "var(--red)",
-                  color: "white",
-                  fontSize: "0.72rem",
-                  fontWeight: 800,
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                Khẩn cấp!
-              </span>
+              <span className="status-pill status-pill-urgent">Khẩn cấp</span>
             )}
             {isFound && !isUrgent && (
-              <span
-                style={{
-                  background: "rgba(0,0,0,0.6)",
-                  color: "white",
-                  fontSize: "0.72rem",
-                  fontWeight: 700,
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                  backdropFilter: "blur(4px)",
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: "6px",
-                    height: "6px",
-                    borderRadius: "50%",
-                    background: "#4ADE80",
-                    marginRight: "4px",
-                    verticalAlign: "middle",
-                    animation: "livePulse 1.8s infinite",
-                  }}
-                ></span>
-                Đang tìm
+              <span className="status-pill status-pill-live">
+                <span className="status-pill-live-dot"></span>
+                {isLostPost ? "Đang tìm giúp" : "Chờ nhận lại"}
               </span>
             )}
             {isReturned && (
-              <span
-                style={{
-                  background: "rgba(22,163,74,0.85)",
-                  color: "white",
-                  fontSize: "0.72rem",
-                  fontWeight: 700,
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                }}
-              >
-                ✓ Đã trả
-              </span>
+              <span className="status-pill status-pill-returned">Đã trả</span>
             )}
           </div>
         </div>
@@ -187,17 +126,19 @@ const ItemCard = ({ item }) => {
         {/* Nội dung */}
         <div className="item-card-body">
           {/* Category + Time */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "8px",
-            }}
-          >
-            <span className="category-badge">
-              <Tag size={11} /> {normalizeCategory(item.category)}
-            </span>
+          <div className="item-card-tag-row">
+            <div className="item-card-tag-cluster">
+              <span className="category-badge">
+                <Tag size={11} /> {normalizeCategory(item.category)}
+              </span>
+              <span
+                className={`item-chip item-chip-post ${
+                  isLostPost ? "lost" : "found"
+                }`}
+              >
+                {isLostPost ? "Bài tìm đồ" : "Bài nhặt đồ"}
+              </span>
+            </div>
             <TimeChip
               dateStr={item.date_lost_found}
               createdAt={item.created_at}
@@ -205,26 +146,46 @@ const ItemCard = ({ item }) => {
           </div>
 
           {/* Title */}
-          <h3 className="item-card-title">{item.title}</h3>
+          <h3 className="item-card-title" title={item.title}>
+            {item.title}
+          </h3>
 
-          {/* Description */}
-          {item.description && (
-            <p className="item-card-desc">{item.description}</p>
-          )}
+          {/* Description (rút gọn ở card chính) */}
+          {item.description ? (
+            <p className="item-card-desc" title={item.description}>
+              {item.description}
+            </p>
+          ) : null}
 
           {/* Meta */}
           <div className="item-card-meta">
             <MapPin size={13} style={{ color: "var(--red)", flexShrink: 0 }} />
-            <span
-              style={{
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                fontSize: "0.8125rem",
-              }}
-            >
+            <span className="item-card-location" title={item.location}>
               {item.location}
             </span>
+          </div>
+
+          <div
+            className="item-card-owner"
+            title={`${ownerLabel}: ${ownerName}${ownerProfile ? ` · ${ownerProfile}` : ""}`}
+          >
+            <strong style={{ color: "var(--ink)" }}>{ownerLabel}:</strong>{" "}
+            {ownerName}
+            {ownerProfile ? ` · ${ownerProfile}` : ""}
+          </div>
+
+          <div className="item-card-hover-panel" aria-hidden="true">
+            <div className="item-card-hover-title">{item.title}</div>
+            {item.description ? (
+              <div className="item-card-hover-desc">{item.description}</div>
+            ) : null}
+            <div className="item-card-hover-line">
+              <MapPin size={13} /> {item.location}
+            </div>
+            <div className="item-card-hover-line">
+              <strong>{ownerLabel}:</strong> {ownerName}
+              {ownerProfile ? ` · ${ownerProfile}` : ""}
+            </div>
           </div>
         </div>
       </div>

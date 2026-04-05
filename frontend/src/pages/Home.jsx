@@ -11,6 +11,7 @@ import {
   CreditCard,
   Box,
   Compass,
+  ArrowRight,
 } from "lucide-react";
 import EmptyState from "../components/ui/EmptyState";
 import getApiErrorMessage from "../utils/get-api-error-message";
@@ -100,9 +101,13 @@ const Home = () => {
     fetchItems();
   }, [fetchItems]);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    fetchItems();
+    await fetchItems();
+    const target = document.getElementById("item-list");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const handleCategoryClick = (catName) => {
@@ -124,6 +129,19 @@ const Home = () => {
 
     return matchesStatus && matchesTime;
   });
+
+  const pendingCount = filteredItems.filter(
+    (item) => item.status === "FOUND",
+  ).length;
+  const returnedCount = filteredItems.filter(
+    (item) => item.status === "RETURNED",
+  ).length;
+  const openFoundPosts = filteredItems.filter(
+    (item) => item.status === "FOUND" && item.post_type === "FOUND",
+  ).length;
+  const openLostPosts = filteredItems.filter(
+    (item) => item.status === "FOUND" && item.post_type === "LOST",
+  ).length;
 
   return (
     <div>
@@ -181,8 +199,8 @@ const Home = () => {
                     flexShrink: 0,
                   }}
                 ></span>
-                {filteredItems.length > 0
-                  ? `${filteredItems.length} đồ vật đang chờ chủ nhân`
+                {pendingCount > 0
+                  ? `${pendingCount} bài đăng đang mở`
                   : "Cộng đồng tìm đồ thất lạc"}
               </div>
 
@@ -213,8 +231,8 @@ const Home = () => {
                   maxWidth: "380px",
                 }}
               >
-                Tìm kiếm đồ vật bị thất lạc trong khuôn viên trường, hoặc báo
-                cáo đồ bạn vừa nhặt được.
+                Đăng bài tìm đồ bị mất hoặc đăng bài nhặt được để hai bên kết
+                nối và xác minh nhanh chóng.
               </p>
 
               {/* 2 CTA chính — khác nhau về kích thước, không giống nhau */}
@@ -236,7 +254,7 @@ const Home = () => {
                     gap: "8px",
                   }}
                 >
-                  Tôi vừa nhặt được đồ →
+                  Đăng bài mất/nhặt đồ →
                 </Link>
                 <button
                   onClick={() => {
@@ -296,21 +314,26 @@ const Home = () => {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateColumns: "repeat(3, 1fr)",
                   gap: "12px",
                 }}
               >
                 {[
                   {
-                    n: filteredItems.filter((i) => i.status === "FOUND").length,
-                    label: "Đang chờ tìm",
+                    n: openLostPosts,
+                    label: "Bài tìm đồ mở",
                     color: "var(--red)",
                     bg: "var(--red-bg)",
                   },
                   {
-                    n: filteredItems.filter((i) => i.status === "RETURNED")
-                      .length,
-                    label: "Đã trả về chủ",
+                    n: openFoundPosts,
+                    label: "Bài nhặt đồ mở",
+                    color: "var(--amber)",
+                    bg: "var(--amber-bg)",
+                  },
+                  {
+                    n: returnedCount,
+                    label: "Đã xử lý xong",
                     color: "var(--green)",
                     bg: "var(--green-bg)",
                   },

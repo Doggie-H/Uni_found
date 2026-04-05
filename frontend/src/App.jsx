@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import CreateItem from "./pages/CreateItem";
 import ItemDetail from "./pages/ItemDetail";
+import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
 import AdminItems from "./pages/AdminItems";
 import AdminUsers from "./pages/AdminUsers";
@@ -79,6 +80,7 @@ function App() {
             <Route path="login" element={<Login />} />
             <Route path="create-item" element={<CreateItem />} />
             <Route path="item/:id" element={<ItemDetail />} />
+            <Route path="messages" element={<Messages />} />
           </Route>
 
           <Route path="/admin" element={<AdminLayout />}>
