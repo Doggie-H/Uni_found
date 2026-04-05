@@ -6,9 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "demo:reset": "node seed-demo.js",
-    "cleanup:data": "node cleanup-invalid-data.js",
-    "test": "node --test tests/api.integration.test.js",
-    "test:integration": "node --test tests/api.integration.test.js"
+    "cleanup:data": "node cleanup-invalid-data.js"
   },
   "keywords": [],
   "author": "",
