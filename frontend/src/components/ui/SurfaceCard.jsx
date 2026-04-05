@@ -6,6 +6,7 @@ const SurfaceCard = ({
   right,
   children,
   bodyPadding = "16px 20px",
+  style,
 }) => {
   return (
     <div
@@ -14,6 +15,7 @@ const SurfaceCard = ({
         borderRadius: "var(--r-xl)",
         border: "1px solid var(--border)",
         overflow: "hidden",
+        ...style,
       }}
     >
       {(title || subtitle || right) && (

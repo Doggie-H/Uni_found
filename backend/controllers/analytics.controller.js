@@ -3,6 +3,10 @@ const Item = require("../models/item.model");
 const User = require("../models/user.model");
 const Claim = require("../models/claim.model");
 
+const TRACK_EVENT_TYPES = new Set(["page_view"]);
+const TRACK_SOURCES = new Set(["web", "mobile", "seed", "demo", "unknown"]);
+const DEDUP_WINDOW_MS = 45 * 1000;
+
 const RANGE_CONFIG = {
   day: { buckets: 24, label: "Giờ" },
   week: { buckets: 7, label: "Ngày" },
@@ -124,16 +128,78 @@ const placeInBucket = (buckets, date, field) => {
   }
 };
 
+const normalizePath = (value) => {
+  if (typeof value !== "string") return "/";
+  const trimmed = value.trim();
+  if (!trimmed) return "/";
+  const normalized = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return normalized.slice(0, 512);
+};
+
+const normalizeNullableText = (value, maxLength = 256) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, maxLength);
+};
+
+const normalizeEventType = (value) =>
+  TRACK_EVENT_TYPES.has(value) ? value : "page_view";
+
+const normalizeSource = (value) => {
+  if (typeof value !== "string") return "web";
+  const normalized = value.trim().toLowerCase();
+  return TRACK_SOURCES.has(normalized) ? normalized : "unknown";
+};
+
+const toSafeInt = (value, fallback, min = 1, max = 200) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(parsed, min), max);
+};
+
 exports.recordVisit = async (req, res) => {
   try {
-    const path = typeof req.body?.path === "string" ? req.body.path : "/";
-    const referrer =
-      typeof req.body?.referrer === "string" && req.body.referrer.trim()
-        ? req.body.referrer.trim()
-        : null;
+    const event_type = normalizeEventType(req.body?.event_type);
+    const source = normalizeSource(req.body?.source);
+    const path = normalizePath(req.body?.path);
+    const referrer = normalizeNullableText(req.body?.referrer, 512);
+    const visitor_id = normalizeNullableText(req.body?.visitor_id, 120);
+    const session_id = normalizeNullableText(req.body?.session_id, 120);
+    const user_agent = normalizeNullableText(req.headers["user-agent"], 512);
 
-    await Visit.create({ path, referrer });
-    return res.status(201).json({ message: "Da ghi nhan luot truy cap." });
+    if (visitor_id && session_id) {
+      const dedupSince = new Date(Date.now() - DEDUP_WINDOW_MS);
+      const duplicate = await Visit.findOne({
+        event_type,
+        visitor_id,
+        session_id,
+        path,
+        created_at: { $gte: dedupSince },
+      })
+        .select("_id")
+        .lean();
+
+      if (duplicate) {
+        return res
+          .status(200)
+          .json({ message: "Bo qua su kien trung lap.", duplicate: true });
+      }
+    }
+
+    await Visit.create({
+      event_type,
+      source,
+      path,
+      referrer,
+      visitor_id,
+      session_id,
+      user_agent,
+    });
+
+    return res
+      .status(201)
+      .json({ message: "Da ghi nhan luot truy cap.", duplicate: false });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -150,7 +216,10 @@ exports.getAdminAnalytics = async (req, res) => {
     const rangeEnd = buckets[buckets.length - 1]?.end || new Date();
 
     const [visits, items, users, claims] = await Promise.all([
-      Visit.find({ created_at: { $gte: rangeStart, $lt: rangeEnd } })
+      Visit.find({
+        event_type: "page_view",
+        created_at: { $gte: rangeStart, $lt: rangeEnd },
+      })
         .sort({ created_at: 1 })
         .lean(),
       Item.find({}).sort({ created_at: 1 }).lean(),
@@ -189,8 +258,20 @@ exports.getAdminAnalytics = async (req, res) => {
     );
 
     const allItems = await Item.find({}).lean();
-    const allVisits = await Visit.find({}).lean();
+    const allVisits = await Visit.find({ event_type: "page_view" }).lean();
     const allClaims = await Claim.find({}).lean();
+    const rangeVisitorSet = new Set(
+      visits.map((visit) => visit.visitor_id).filter(Boolean),
+    );
+    const rangeSessionSet = new Set(
+      visits.map((visit) => visit.session_id).filter(Boolean),
+    );
+    const allVisitorSet = new Set(
+      allVisits.map((visit) => visit.visitor_id).filter(Boolean),
+    );
+    const allSessionSet = new Set(
+      allVisits.map((visit) => visit.session_id).filter(Boolean),
+    );
 
     const overview = {
       totalUsers: await User.countDocuments({}),
@@ -200,6 +281,8 @@ exports.getAdminAnalytics = async (req, res) => {
       totalReturnedItems: allItems.filter((item) => item.status === "RETURNED")
         .length,
       totalVisits: allVisits.length,
+      totalUniqueVisitors: allVisitorSet.size,
+      totalSessions: allSessionSet.size,
       totalClaims: allClaims.length,
       pendingClaims: allClaims.filter((claim) => claim.status === "PENDING")
         .length,
@@ -208,6 +291,8 @@ exports.getAdminAnalytics = async (req, res) => {
       rejectedClaims: allClaims.filter((claim) => claim.status === "REJECTED")
         .length,
       currentRangeVisits: visits.length,
+      currentRangeUniqueVisitors: rangeVisitorSet.size,
+      currentRangeSessions: rangeSessionSet.size,
       currentRangeItemsReported: buckets.reduce(
         (sum, bucket) => sum + bucket.itemsReported,
         0,
@@ -224,6 +309,62 @@ exports.getAdminAnalytics = async (req, res) => {
       rangeLabel,
       overview,
       buckets: buckets.map(({ start, end, ...bucket }) => bucket),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getAdminVisits = async (req, res) => {
+  try {
+    const page = toSafeInt(req.query.page, 1, 1, 1000000);
+    const limit = toSafeInt(req.query.limit, 20, 1, 200);
+    const sortBy = ["created_at", "path", "source"].includes(req.query.sortBy)
+      ? req.query.sortBy
+      : "created_at";
+    const order = req.query.order === "asc" ? 1 : -1;
+    const keyword =
+      typeof req.query.keyword === "string" ? req.query.keyword.trim() : "";
+
+    const query = { event_type: "page_view" };
+
+    if (keyword) {
+      query.$or = [
+        { path: { $regex: keyword, $options: "i" } },
+        { referrer: { $regex: keyword, $options: "i" } },
+        { source: { $regex: keyword, $options: "i" } },
+      ];
+    }
+
+    const [rows, total] = await Promise.all([
+      Visit.find(query)
+        .sort({ [sortBy]: order })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Visit.countDocuments(query),
+    ]);
+
+    const data = rows.map((visit) => ({
+      id: visit._id.toString(),
+      created_at: visit.created_at,
+      path: visit.path || "/",
+      source: visit.source || "web",
+      referrer: visit.referrer || null,
+      visitor_id: visit.visitor_id || null,
+      session_id: visit.session_id || null,
+      user_agent: visit.user_agent || null,
+      event_type: visit.event_type || "page_view",
+    }));
+
+    return res.json({
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });

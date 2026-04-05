@@ -10,5 +10,11 @@ router.get(
   requireAdmin,
   analyticsController.getAdminAnalytics,
 );
+router.get(
+  "/visits",
+  authenticate,
+  requireAdmin,
+  analyticsController.getAdminVisits,
+);
 
 module.exports = router;

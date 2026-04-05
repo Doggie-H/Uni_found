@@ -1,15 +1,99 @@
 import React from "react";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  Area,
+  Line,
+} from "recharts";
 
 const defaultSeries = [
-  { key: "visits", label: "Lượt truy cập", color: "var(--blue)" },
-  { key: "itemsReported", label: "Bài đăng đồ vật", color: "var(--amber)" },
-  { key: "itemsReturned", label: "Đã tìm được", color: "var(--green)" },
+  { key: "visits", label: "Lượt truy cập", color: "#2563EB" },
+  { key: "itemsReported", label: "Bài đăng đồ vật", color: "#D97706" },
+  { key: "itemsReturned", label: "Đã tìm được", color: "#16A34A" },
 ];
+
+const formatTick = (value) => {
+  if (!Number.isFinite(value)) return "0";
+  if (Number.isInteger(value)) return String(value);
+  return Number(value)
+    .toFixed(value < 1 ? 2 : 1)
+    .replace(/\.0+$/, "");
+};
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div
+      style={{
+        background: "var(--white)",
+        border: "1px solid var(--border)",
+        borderRadius: "12px",
+        boxShadow: "var(--shadow-md)",
+        padding: "10px 12px",
+        minWidth: "180px",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "0.82rem",
+          color: "var(--muted)",
+          marginBottom: "8px",
+          fontWeight: 600,
+        }}
+      >
+        Mốc thời gian: {label}
+      </div>
+
+      {payload.map((entry) => (
+        <div
+          key={entry.dataKey}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            marginBottom: "5px",
+          }}
+        >
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              color: "var(--ink)",
+              fontSize: "0.82rem",
+            }}
+          >
+            <span
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: entry.color,
+                display: "inline-block",
+              }}
+            />
+            {entry.name}
+          </span>
+          <strong style={{ color: "var(--ink)", fontSize: "0.85rem" }}>
+            {formatTick(Number(entry.value))}
+          </strong>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const AnalyticsChart = ({
   buckets = [],
   series = defaultSeries,
-  height = 320,
+  height = 360,
   emptyText = "Chưa có dữ liệu để hiển thị biểu đồ.",
 }) => {
   if (!buckets.length) {
@@ -21,9 +105,10 @@ const AnalyticsChart = ({
           alignItems: "center",
           justifyContent: "center",
           color: "var(--muted)",
-          fontSize: "0.9rem",
-          background: "var(--surface)",
-          borderRadius: "14px",
+          fontSize: "0.92rem",
+          background: "linear-gradient(180deg, var(--surface), var(--white))",
+          border: "1px solid var(--border)",
+          borderRadius: "16px",
         }}
       >
         {emptyText}
@@ -31,165 +116,154 @@ const AnalyticsChart = ({
     );
   }
 
-  const width = Math.max(760, buckets.length * 56 + 40);
-  const left = 42;
-  const right = 18;
-  const top = 24;
-  const bottom = 56;
-  const chartHeight = height - top - bottom;
-  const chartWidth = width - left - right;
-  const maxValue = Math.max(
-    1,
-    ...buckets.flatMap((bucket) =>
-      series.map((serie) => Number(bucket?.[serie.key] || 0)),
+  const totals = series.map((serie) => ({
+    ...serie,
+    total: buckets.reduce(
+      (sum, bucket) => sum + Number(bucket?.[serie.key] || 0),
+      0,
     ),
-  );
-  const xStep = chartWidth / buckets.length;
-  const barWidth = Math.min(
-    12,
-    Math.max(8, (xStep - 16) / (series.length || 1)),
-  );
-  const groupWidth =
-    series.length * barWidth + Math.max(0, series.length - 1) * 6;
-  const gridLines = 4;
+  }));
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <svg
-        width={width}
-        height={height}
-        role="img"
-        aria-label="Biểu đồ thống kê"
-      >
-        <defs>
-          <linearGradient id="analytics-bg" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="var(--surface)" stopOpacity="0.65" />
-            <stop offset="100%" stopColor="var(--white)" stopOpacity="0.1" />
-          </linearGradient>
-        </defs>
-
-        <rect
-          x={0}
-          y={0}
-          width={width}
-          height={height}
-          rx={14}
-          fill="url(#analytics-bg)"
-        />
-
-        {Array.from({ length: gridLines + 1 }).map((_, index) => {
-          const y = top + (chartHeight / gridLines) * index;
-          const value = Math.round(maxValue - (maxValue / gridLines) * index);
-          return (
-            <g key={`grid-${index}`}>
-              <line
-                x1={left}
-                x2={width - right}
-                y1={y}
-                y2={y}
-                stroke="var(--border)"
-                strokeDasharray={index === gridLines ? "0" : "4 6"}
-              />
-              <text
-                x={left - 8}
-                y={y + 4}
-                textAnchor="end"
-                fontSize="10"
-                fill="var(--muted)"
-              >
-                {value}
-              </text>
-            </g>
-          );
-        })}
-
-        {buckets.map((bucket, bucketIndex) => {
-          const centerX = left + xStep * bucketIndex + xStep / 2;
-          const baseX = centerX - groupWidth / 2;
-          const labelY = height - 22;
-          return (
-            <g key={bucket.key || bucket.label || bucketIndex}>
-              {series.map((serie, serieIndex) => {
-                const value = Number(bucket?.[serie.key] || 0);
-                const barHeight = Math.max(
-                  (value / maxValue) * chartHeight,
-                  value > 0 ? 4 : 0,
-                );
-                const x = baseX + serieIndex * (barWidth + 6);
-                const y = top + chartHeight - barHeight;
-                return (
-                  <g key={`${bucket.key || bucketIndex}-${serie.key}`}>
-                    <rect
-                      x={x}
-                      y={y}
-                      width={barWidth}
-                      height={barHeight}
-                      rx={6}
-                      fill={serie.color}
-                      opacity={serie.key === "itemsReturned" ? 0.92 : 1}
-                    />
-                    {value > 0 && barHeight > 16 && (
-                      <text
-                        x={x + barWidth / 2}
-                        y={y - 6}
-                        textAnchor="middle"
-                        fontSize="10"
-                        fill="var(--ink)"
-                      >
-                        {value}
-                      </text>
-                    )}
-                  </g>
-                );
-              })}
-              <text
-                x={centerX}
-                y={labelY}
-                textAnchor="middle"
-                fontSize="10"
-                fill="var(--muted)"
-              >
-                {bucket.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-
+    <div>
       <div
         style={{
-          display: "flex",
-          flexWrap: "wrap",
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
           gap: "10px",
-          marginTop: "14px",
+          marginBottom: "12px",
         }}
       >
-        {series.map((serie) => (
+        {totals.map((item) => (
           <div
-            key={serie.key}
+            key={item.key}
             style={{
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
-              gap: "8px",
-              fontSize: "0.82rem",
-              color: "var(--muted)",
-              padding: "6px 10px",
-              borderRadius: "999px",
+              justifyContent: "space-between",
+              gap: "10px",
+              padding: "10px 12px",
+              borderRadius: "12px",
+              border: "1px solid var(--border)",
               background: "var(--surface)",
             }}
           >
             <span
               style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "999px",
-                background: serie.color,
-                display: "inline-block",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                color: "var(--muted)",
+                fontSize: "0.8rem",
+                fontWeight: 600,
               }}
-            />
-            {serie.label}
+            >
+              <span
+                style={{
+                  width: "9px",
+                  height: "9px",
+                  borderRadius: "50%",
+                  background: item.color,
+                  display: "inline-block",
+                }}
+              />
+              {item.label}
+            </span>
+            <strong style={{ color: "var(--ink)", fontSize: "1rem" }}>
+              {item.total}
+            </strong>
           </div>
         ))}
+      </div>
+
+      <div
+        style={{
+          height,
+          border: "1px solid var(--border)",
+          borderRadius: "16px",
+          padding: "12px 14px 6px",
+          background: "var(--white)",
+        }}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart
+            data={buckets}
+            margin={{ top: 14, right: 16, left: 2, bottom: 8 }}
+          >
+            <defs>
+              <linearGradient id="visitsArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#2563EB" stopOpacity={0.22} />
+                <stop offset="100%" stopColor="#2563EB" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+
+            <CartesianGrid
+              stroke="var(--border)"
+              strokeDasharray="4 6"
+              vertical={false}
+            />
+
+            <XAxis
+              dataKey="label"
+              tick={{ fill: "var(--muted)", fontSize: 11 }}
+              axisLine={{ stroke: "var(--border)" }}
+              tickLine={false}
+              minTickGap={16}
+            />
+
+            <YAxis
+              tick={{ fill: "var(--muted)", fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              width={34}
+              allowDecimals={false}
+            />
+
+            <Tooltip
+              content={<CustomTooltip />}
+              cursor={{ stroke: "var(--border)", strokeDasharray: "3 3" }}
+            />
+
+            <Legend
+              verticalAlign="bottom"
+              align="left"
+              iconType="circle"
+              iconSize={9}
+              wrapperStyle={{ paddingTop: 10 }}
+            />
+
+            <Area
+              type="monotone"
+              dataKey="visits"
+              name="Lượt truy cập"
+              stroke="#2563EB"
+              strokeWidth={2.8}
+              fill="url(#visitsArea)"
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="itemsReported"
+              name="Bài đăng đồ vật"
+              stroke="#D97706"
+              strokeWidth={2.2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="itemsReturned"
+              name="Đã tìm được"
+              stroke="#16A34A"
+              strokeWidth={2.2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

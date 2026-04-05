@@ -40,11 +40,23 @@ const Admin = () => {
   const [claimPage, setClaimPage] = useState(1);
   const [claimSort, setClaimSort] = useState("created_at:desc");
   const [analyticsRange, setAnalyticsRange] = useState("month");
+  const [visits, setVisits] = useState([]);
+  const [visitLoading, setVisitLoading] = useState(true);
+  const [visitExporting, setVisitExporting] = useState(false);
+  const [visitPage, setVisitPage] = useState(1);
+  const [visitSort, setVisitSort] = useState("created_at:desc");
+  const [visitKeyword, setVisitKeyword] = useState("");
   const [claimPagination, setClaimPagination] = useState({
     page: 1,
     totalPages: 1,
     total: 0,
     limit: 10,
+  });
+  const [visitPagination, setVisitPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    limit: 12,
   });
   const initialAnalyticsLoadedRef = useRef(false);
 
@@ -63,6 +75,19 @@ const Admin = () => {
   );
 
   const buildClaimCacheKey = (params) => `claims:${JSON.stringify(params)}`;
+
+  const buildVisitParams = useCallback(
+    (targetPage = visitPage, targetLimit = 12) => ({
+      page: targetPage,
+      limit: targetLimit,
+      sortBy: visitSort.split(":")[0],
+      order: visitSort.split(":")[1],
+      keyword: visitKeyword.trim(),
+    }),
+    [visitPage, visitSort, visitKeyword],
+  );
+
+  const buildVisitCacheKey = (params) => `visits:${JSON.stringify(params)}`;
 
   const fetchClaims = useCallback(
     async (force = false) => {
@@ -136,6 +161,62 @@ const Admin = () => {
     }
   }, []);
 
+  const fetchVisits = useCallback(
+    async (force = false) => {
+      setVisitLoading(true);
+      try {
+        const visitParams = buildVisitParams();
+        const visitCacheKey = buildVisitCacheKey(visitParams);
+        let visitData = [];
+        let visitPg = { page: 1, totalPages: 1, total: 0, limit: 12 };
+
+        if (!force) {
+          const cachedVisits = getAdminCache(visitCacheKey);
+          if (cachedVisits) {
+            visitData = cachedVisits.data;
+            visitPg = cachedVisits.pagination;
+          }
+        }
+
+        const visitsRes = await Promise.resolve(
+          visitData.length > 0
+            ? Promise.resolve({
+                data: { data: visitData, pagination: visitPg },
+              })
+            : axiosClient.get("/analytics/visits", {
+                params: visitParams,
+              }),
+        );
+
+        const visitsPayload = visitsRes.data;
+        visitData = Array.isArray(visitsPayload)
+          ? visitsPayload
+          : visitsPayload?.data || [];
+        visitPg = visitsPayload?.pagination || {
+          page: 1,
+          totalPages: 1,
+          total: visitData.length,
+          limit: 12,
+        };
+
+        setAdminCache(visitCacheKey, { data: visitData, pagination: visitPg });
+        setVisits(visitData);
+        setVisitPagination(visitPg);
+      } catch (err) {
+        console.error(err);
+        alert(
+          getApiErrorMessage(
+            err,
+            "Không thể tải bảng lượt truy cập. Vui lòng thử lại.",
+          ),
+        );
+      } finally {
+        setVisitLoading(false);
+      }
+    },
+    [buildVisitParams],
+  );
+
   useEffect(() => {
     if (user?.role !== "admin") return;
     if (initialAnalyticsLoadedRef.current) return;
@@ -143,11 +224,15 @@ const Admin = () => {
     const load = async () => {
       setClaimLoading(true);
       setAnalyticsLoading(true);
-      await Promise.all([fetchClaims(), fetchAnalytics(analyticsRange)]);
+      await Promise.all([
+        fetchClaims(),
+        fetchAnalytics(analyticsRange),
+        fetchVisits(),
+      ]);
     };
 
     load();
-  }, [user, fetchClaims, fetchAnalytics, analyticsRange]);
+  }, [user, fetchClaims, fetchAnalytics, fetchVisits, analyticsRange]);
 
   useEffect(() => {
     if (user?.role !== "admin") return;
@@ -160,6 +245,12 @@ const Admin = () => {
     if (!initialAnalyticsLoadedRef.current) return;
     fetchAnalytics(analyticsRange);
   }, [analyticsRange, fetchAnalytics, user]);
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    if (!initialAnalyticsLoadedRef.current) return;
+    fetchVisits();
+  }, [fetchVisits, user]);
 
   const handleAction = async (claimId, status) => {
     try {
@@ -217,6 +308,49 @@ const Admin = () => {
     }
   };
 
+  const handleExportVisitCsv = async () => {
+    setVisitExporting(true);
+    try {
+      const firstRes = await axiosClient.get("/analytics/visits", {
+        params: buildVisitParams(1, 200),
+      });
+      const firstPayload = firstRes.data;
+      const firstData = Array.isArray(firstPayload)
+        ? firstPayload
+        : firstPayload?.data || [];
+      const firstPg = firstPayload?.pagination || { totalPages: 1 };
+
+      const allRows = [...firstData];
+      for (let p = 2; p <= firstPg.totalPages; p += 1) {
+        const pageRes = await axiosClient.get("/analytics/visits", {
+          params: buildVisitParams(p, 200),
+        });
+        const payload = pageRes.data;
+        const rows = Array.isArray(payload) ? payload : payload?.data || [];
+        allRows.push(...rows);
+      }
+
+      downloadCsv(
+        `visits-${Date.now()}.csv`,
+        [
+          { key: "id", label: "ID" },
+          { key: "created_at", label: "Created At" },
+          { key: "path", label: "Path" },
+          { key: "source", label: "Source" },
+          { key: "visitor_id", label: "Visitor ID" },
+          { key: "session_id", label: "Session ID" },
+          { key: "referrer", label: "Referrer" },
+          { key: "user_agent", label: "User Agent" },
+        ],
+        allRows,
+      );
+    } catch (err) {
+      alert(getApiErrorMessage(err, "Không thể xuất CSV lượt truy cập."));
+    } finally {
+      setVisitExporting(false);
+    }
+  };
+
   const pendingClaims = claims.filter((c) => c.status === "PENDING");
   const processedClaims = claims.filter((c) => c.status !== "PENDING");
 
@@ -256,6 +390,13 @@ const Admin = () => {
         {s.label}
       </span>
     );
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString("vi-VN");
   };
 
   if (claimLoading && analyticsLoading) {
@@ -683,6 +824,214 @@ const Admin = () => {
           disabled={claimPagination.page >= claimPagination.totalPages}
           onClick={() =>
             setClaimPage((p) => Math.min(claimPagination.totalPages, p + 1))
+          }
+        >
+          Trang sau
+        </button>
+      </div>
+
+      <div style={{ marginTop: "26px", marginBottom: "14px" }}>
+        <SurfaceCard
+          title="Lượt truy cập web"
+          subtitle={`Trang ${visitPagination.page}/${visitPagination.totalPages} · ${visitPagination.total} bản ghi`}
+          bodyPadding="0"
+          right={
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "8px",
+                alignItems: "center",
+              }}
+            >
+              <input
+                className="input"
+                value={visitKeyword}
+                onChange={(e) => {
+                  setVisitKeyword(e.target.value);
+                  setVisitPage(1);
+                }}
+                placeholder="Tìm path, source, referrer"
+                style={{ minWidth: "240px" }}
+              />
+              <select
+                className="input"
+                value={visitSort}
+                onChange={(e) => {
+                  setVisitSort(e.target.value);
+                  setVisitPage(1);
+                }}
+                style={{ maxWidth: "220px" }}
+              >
+                <option value="created_at:desc">Mới nhất</option>
+                <option value="created_at:asc">Cũ nhất</option>
+                <option value="path:asc">Path A-Z</option>
+                <option value="path:desc">Path Z-A</option>
+                <option value="source:asc">Source A-Z</option>
+                <option value="source:desc">Source Z-A</option>
+              </select>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={handleExportVisitCsv}
+                disabled={visitExporting}
+              >
+                <Download size={14} />
+                {visitExporting ? "Đang xuất..." : "Export CSV truy cập"}
+              </button>
+            </div>
+          }
+        >
+          {visitLoading ? (
+            <div
+              style={{
+                padding: "20px 16px",
+                color: "var(--muted)",
+                fontSize: "0.9rem",
+              }}
+            >
+              Đang tải dữ liệu truy cập...
+            </div>
+          ) : visits.length === 0 ? (
+            <EmptyState icon={Activity} text="Không có dữ liệu lượt truy cập" />
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "var(--surface)" }}>
+                    {[
+                      "Thời gian",
+                      "Path",
+                      "Source",
+                      "Visitor",
+                      "Session",
+                      "Referrer",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          padding: "10px 12px",
+                          textAlign: "left",
+                          fontSize: "0.76rem",
+                          fontWeight: 700,
+                          color: "var(--muted)",
+                          letterSpacing: "0.04em",
+                          textTransform: "uppercase",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visits.map((visit) => (
+                    <tr
+                      key={visit.id}
+                      style={{ borderTop: "1px solid var(--border)" }}
+                    >
+                      <td
+                        style={{
+                          padding: "12px",
+                          fontSize: "0.82rem",
+                          color: "var(--muted)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {formatDateTime(visit.created_at)}
+                      </td>
+                      <td
+                        style={{
+                          padding: "12px",
+                          fontFamily: "monospace",
+                          fontSize: "0.82rem",
+                          color: "var(--ink)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {visit.path || "-"}
+                      </td>
+                      <td style={{ padding: "12px", fontSize: "0.82rem" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "3px 8px",
+                            borderRadius: "999px",
+                            background: "var(--blue-bg)",
+                            color: "var(--blue)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {visit.source || "direct"}
+                        </span>
+                      </td>
+                      <td
+                        style={{
+                          padding: "12px",
+                          fontFamily: "monospace",
+                          fontSize: "0.76rem",
+                          color: "var(--prose)",
+                          maxWidth: "160px",
+                        }}
+                      >
+                        {visit.visitor_id || "-"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "12px",
+                          fontFamily: "monospace",
+                          fontSize: "0.76rem",
+                          color: "var(--prose)",
+                          maxWidth: "160px",
+                        }}
+                      >
+                        {visit.session_id || "-"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "12px",
+                          fontSize: "0.8rem",
+                          color: "var(--muted)",
+                          maxWidth: "280px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={visit.referrer || ""}
+                      >
+                        {visit.referrer || "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SurfaceCard>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "8px",
+          marginTop: "12px",
+        }}
+      >
+        <button
+          className="btn btn-ghost btn-sm"
+          disabled={visitPagination.page <= 1 || visitLoading}
+          onClick={() => setVisitPage((p) => Math.max(1, p - 1))}
+        >
+          Trang trước
+        </button>
+        <button
+          className="btn btn-ghost btn-sm"
+          disabled={
+            visitPagination.page >= visitPagination.totalPages || visitLoading
+          }
+          onClick={() =>
+            setVisitPage((p) => Math.min(visitPagination.totalPages, p + 1))
           }
         >
           Trang sau

@@ -11,7 +11,6 @@ import {
   CreditCard,
   Box,
   Compass,
-  ArrowRight,
 } from "lucide-react";
 import EmptyState from "../components/ui/EmptyState";
 import getApiErrorMessage from "../utils/get-api-error-message";
@@ -25,11 +24,57 @@ const CATEGORIES = [
   { name: "Khác", icon: Box },
 ];
 
+const STATUS_FILTERS = [
+  { value: "all", label: "Tất cả" },
+  { value: "FOUND", label: "Chưa tìm được" },
+  { value: "RETURNED", label: "Đã tìm được" },
+];
+
+const TIME_FILTERS = [
+  { value: "all", label: "Tất cả thời gian" },
+  { value: "today", label: "Hôm nay" },
+  { value: "7d", label: "7 ngày gần đây" },
+  { value: "30d", label: "30 ngày gần đây" },
+  { value: "90d", label: "90 ngày gần đây" },
+];
+
+const parseDateValue = (dateStr) => {
+  if (!dateStr) return null;
+  if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  const parsed = new Date(dateStr);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getItemAgeInDays = (item) => {
+  const sourceDate = item?.date_lost_found || item?.created_at;
+  const parsed = parseDateValue(sourceDate);
+  if (!parsed) return null;
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateStart = new Date(
+    parsed.getFullYear(),
+    parsed.getMonth(),
+    parsed.getDate(),
+  );
+
+  return Math.max(
+    0,
+    Math.floor((todayStart - dateStart) / (1000 * 60 * 60 * 24)),
+  );
+};
+
 const Home = () => {
   const { user } = useContext(AuthContext);
   const [items, setItems] = useState([]);
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [timeFilter, setTimeFilter] = useState("all");
   const [loading, setLoading] = useState(false);
 
   const fetchItems = useCallback(
@@ -65,17 +110,20 @@ const Home = () => {
     setCategory(val);
   };
 
-  const runDemoSearch = (kw, catName) => {
-    const val = catName === "Tất cả" ? "" : catName;
-    setKeyword(kw);
-    setCategory(val);
-    fetchItems(kw, val);
-    window.requestAnimationFrame(() => {
-      document
-        .getElementById("item-list")
-        ?.scrollIntoView({ behavior: "smooth" });
-    });
-  };
+  const filteredItems = items.filter((item) => {
+    const matchesStatus =
+      statusFilter === "all" || item.status === statusFilter;
+
+    const ageInDays = getItemAgeInDays(item);
+    const matchesTime =
+      timeFilter === "all" ||
+      (timeFilter === "today" && ageInDays === 0) ||
+      (timeFilter === "7d" && ageInDays !== null && ageInDays <= 7) ||
+      (timeFilter === "30d" && ageInDays !== null && ageInDays <= 30) ||
+      (timeFilter === "90d" && ageInDays !== null && ageInDays <= 90);
+
+    return matchesStatus && matchesTime;
+  });
 
   return (
     <div>
@@ -133,8 +181,8 @@ const Home = () => {
                     flexShrink: 0,
                   }}
                 ></span>
-                {items.length > 0
-                  ? `${items.length} đồ vật đang chờ chủ nhân`
+                {filteredItems.length > 0
+                  ? `${filteredItems.length} đồ vật đang chờ chủ nhân`
                   : "Cộng đồng tìm đồ thất lạc"}
               </div>
 
@@ -254,13 +302,14 @@ const Home = () => {
               >
                 {[
                   {
-                    n: items.filter((i) => i.status === "FOUND").length,
+                    n: filteredItems.filter((i) => i.status === "FOUND").length,
                     label: "Đang chờ tìm",
                     color: "var(--red)",
                     bg: "var(--red-bg)",
                   },
                   {
-                    n: items.filter((i) => i.status === "RETURNED").length,
+                    n: filteredItems.filter((i) => i.status === "RETURNED")
+                      .length,
                     label: "Đã trả về chủ",
                     color: "var(--green)",
                     bg: "var(--green-bg)",
@@ -298,10 +347,13 @@ const Home = () => {
             className="hero-category-row"
             style={{
               display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-start",
               gap: "4px",
               marginTop: "var(--s7)",
               borderTop: "1px solid var(--border)",
               paddingTop: "0",
+              flexWrap: "wrap",
             }}
           >
             {CATEGORIES.map((cat) => {
@@ -344,180 +396,6 @@ const Home = () => {
       </div>
 
       {/* =============================================
-                DEMO FLOWS
-                ============================================= */}
-      <div style={{ padding: "var(--s7) 0 0" }}>
-        <div
-          className="container"
-          style={{
-            maxWidth: "1160px",
-            margin: "0 auto",
-            padding: "0 var(--s5)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "16px",
-              marginBottom: "16px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h2
-                style={{
-                  fontFamily: "var(--font-head)",
-                  fontSize: "1.375rem",
-                  fontWeight: 700,
-                  color: "var(--ink)",
-                  marginBottom: "4px",
-                }}
-              >
-                Luồng demo cho người dùng
-              </h2>
-              <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-                Dùng 2 nút này để mô phỏng đúng hành trình tìm đồ mất và đăng
-                bài nhặt được đồ.
-              </p>
-            </div>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                color: "var(--muted)",
-                fontSize: "0.85rem",
-                background: "var(--surface)",
-                padding: "8px 12px",
-                borderRadius: "999px",
-              }}
-            >
-              <ArrowRight size={14} /> Mở web là có thể thử ngay
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: "16px",
-              marginBottom: "24px",
-            }}
-          >
-            <div
-              style={{
-                background: "var(--white)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--r-xl)",
-                padding: "20px",
-                boxShadow: "var(--shadow-sm)",
-              }}
-            >
-              <div
-                style={{
-                  color: "var(--blue)",
-                  fontWeight: 700,
-                  marginBottom: "8px",
-                }}
-              >
-                Người dùng vào tìm vật mất
-              </div>
-              <h3
-                style={{
-                  fontFamily: "var(--font-head)",
-                  fontSize: "1.1rem",
-                  marginBottom: "8px",
-                  color: "var(--ink)",
-                }}
-              >
-                Tôi bị mất ví / điện thoại
-              </h3>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  fontSize: "0.9rem",
-                  lineHeight: 1.6,
-                  marginBottom: "14px",
-                }}
-              >
-                Bấm một nút để tự lọc ra đúng nhóm đồ, sau đó mở bài đăng phù
-                hợp và gửi claim nếu trùng khớp.
-              </p>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => runDemoSearch("ví", "Ví/Giấy tờ")}
-                >
-                  Tìm ví bị mất
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => runDemoSearch("điện thoại", "Đồ Điện Tử")}
-                >
-                  Tìm điện thoại
-                </button>
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: "var(--white)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--r-xl)",
-                padding: "20px",
-                boxShadow: "var(--shadow-sm)",
-              }}
-            >
-              <div
-                style={{
-                  color: "var(--amber)",
-                  fontWeight: 700,
-                  marginBottom: "8px",
-                }}
-              >
-                Người dùng đăng bài nhặt được đồ
-              </div>
-              <h3
-                style={{
-                  fontFamily: "var(--font-head)",
-                  fontSize: "1.1rem",
-                  marginBottom: "8px",
-                  color: "var(--ink)",
-                }}
-              >
-                Tôi vừa nhặt được món đồ
-              </h3>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  fontSize: "0.9rem",
-                  lineHeight: 1.6,
-                  marginBottom: "14px",
-                }}
-              >
-                Từ đây người dùng sẽ vào form đăng bài, mô tả vị trí và ảnh để
-                chủ nhân có thể nhận ra đồ của mình.
-              </p>
-              <Link
-                to="/create-item"
-                className="btn btn-danger btn-sm"
-                style={{
-                  textDecoration: "none",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                Đăng bài nhặt được đồ <ArrowRight size={14} />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =============================================
                 ITEM LIST
                 ============================================= */}
       <div id="item-list" style={{ padding: "var(--s7) 0" }}>
@@ -533,9 +411,11 @@ const Home = () => {
           <div
             style={{
               display: "flex",
-              alignItems: "baseline",
+              alignItems: "flex-end",
               justifyContent: "space-between",
-              marginBottom: "var(--s5)",
+              marginBottom: "var(--s4)",
+              gap: "16px",
+              flexWrap: "wrap",
             }}
           >
             <div>
@@ -549,7 +429,7 @@ const Home = () => {
                   marginBottom: "2px",
                 }}
               >
-                {loading ? "Đang tải..." : `${items.length} đồ vật`}
+                {loading ? "Đang tải..." : `${filteredItems.length} đồ vật`}
                 {category && (
                   <span
                     style={{
@@ -579,20 +459,115 @@ const Home = () => {
                 Sắp xếp theo thời gian mới nhất
               </p>
             </div>
-            {user && (
-              <Link
-                to="/create-item"
-                className="btn btn-ghost btn-sm"
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-end",
+                gap: "14px",
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+                marginLeft: "auto",
+              }}
+            >
+              <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
+                  display: "grid",
                   gap: "6px",
-                  textDecoration: "none",
+                  minWidth: "180px",
                 }}
               >
-                Báo nhặt đồ <ArrowRight size={14} />
-              </Link>
-            )}
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--muted)",
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Trạng thái
+                </span>
+                <select
+                  className="input"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{
+                    minWidth: "180px",
+                    height: "42px",
+                    padding: "0 14px",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    fontWeight: 600,
+                    borderRadius: "12px",
+                    background: "var(--white)",
+                    border: "1px solid var(--border)",
+                    boxShadow: "none",
+                  }}
+                >
+                  {STATUS_FILTERS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gap: "6px",
+                  minWidth: "200px",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--muted)",
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Thời gian
+                </span>
+                <select
+                  className="input"
+                  value={timeFilter}
+                  onChange={(e) => setTimeFilter(e.target.value)}
+                  style={{
+                    minWidth: "200px",
+                    height: "42px",
+                    padding: "0 14px",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    fontWeight: 600,
+                    borderRadius: "12px",
+                    background: "var(--white)",
+                    border: "1px solid var(--border)",
+                    boxShadow: "none",
+                  }}
+                >
+                  {TIME_FILTERS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {user && (
+                <Link
+                  to="/create-item"
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    textDecoration: "none",
+                  }}
+                >
+                  Báo nhặt đồ <ArrowRight size={14} />
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Loading */}
@@ -614,9 +589,9 @@ const Home = () => {
                 Đang tải dữ liệu...
               </p>
             </div>
-          ) : items.length > 0 ? (
+          ) : filteredItems.length > 0 ? (
             <div className="grid-cards">
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <ItemCard key={item.id} item={item} />
               ))}
             </div>
