@@ -126,14 +126,7 @@ const AnalyticsChart = ({
 
   return (
     <div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          gap: "10px",
-          marginBottom: "12px",
-        }}
-      >
+      <div className="chart-summary-grid">
         {totals.map((item) => (
           <div
             key={item.key}

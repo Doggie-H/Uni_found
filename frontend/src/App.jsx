@@ -1,17 +1,18 @@
-import React, { useEffect } from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import axiosClient from "./api/axios-client";
 import { AuthProvider } from "./context/AuthContext";
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import CreateItem from "./pages/CreateItem";
-import ItemDetail from "./pages/ItemDetail";
-import Messages from "./pages/Messages";
-import Admin from "./pages/Admin";
-import AdminItems from "./pages/AdminItems";
-import AdminUsers from "./pages/AdminUsers";
+
+const Home = lazy(() => import("./pages/Home"));
+const Login = lazy(() => import("./pages/Login"));
+const CreateItem = lazy(() => import("./pages/CreateItem"));
+const ItemDetail = lazy(() => import("./pages/ItemDetail"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Admin = lazy(() => import("./pages/Admin"));
+const AdminItems = lazy(() => import("./pages/AdminItems"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 
 const VISITOR_KEY = "unifound_visitor_id";
 const SESSION_KEY = "unifound_session_id";
@@ -69,26 +70,43 @@ function AnalyticsTracker() {
   return null;
 }
 
+const AppLoadingFallback = () => (
+  <div
+    style={{
+      minHeight: "50vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "var(--muted)",
+      fontSize: "0.95rem",
+    }}
+  >
+    Đang tải giao diện...
+  </div>
+);
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <AnalyticsTracker />
-        <Routes>
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<Home />} />
-            <Route path="login" element={<Login />} />
-            <Route path="create-item" element={<CreateItem />} />
-            <Route path="item/:id" element={<ItemDetail />} />
-            <Route path="messages" element={<Messages />} />
-          </Route>
+        <Suspense fallback={<AppLoadingFallback />}>
+          <Routes>
+            <Route path="/" element={<MainLayout />}>
+              <Route index element={<Home />} />
+              <Route path="login" element={<Login />} />
+              <Route path="create-item" element={<CreateItem />} />
+              <Route path="item/:id" element={<ItemDetail />} />
+              <Route path="messages" element={<Messages />} />
+            </Route>
 
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Admin />} />
-            <Route path="items" element={<AdminItems />} />
-            <Route path="users" element={<AdminUsers />} />
-          </Route>
-        </Routes>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Admin />} />
+              <Route path="items" element={<AdminItems />} />
+              <Route path="users" element={<AdminUsers />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

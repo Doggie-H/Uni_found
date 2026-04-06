@@ -312,9 +312,9 @@ const Home = () => {
 
               {/* Stats nhỏ — thêm chiều sâu */}
               <div
+                className="home-metrics-grid"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
                   gap: "12px",
                 }}
               >

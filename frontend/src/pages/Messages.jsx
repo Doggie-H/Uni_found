@@ -140,13 +140,13 @@ const Messages = () => {
   return (
     <div className="container page-shell" style={{ paddingTop: "24px" }}>
       <div
+        className="messages-layout"
         style={{
           display: "grid",
-          gridTemplateColumns: "320px 1fr",
           gap: "16px",
         }}
       >
-        <div className="ui-panel" style={{ padding: "0" }}>
+        <div className="ui-panel messages-sidebar" style={{ padding: "0" }}>
           <div
             style={{
               padding: "14px 16px",
@@ -169,7 +169,10 @@ const Messages = () => {
               Chưa có cuộc trò chuyện nào.
             </div>
           ) : (
-            <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
+            <div
+              className="messages-list"
+              style={{ maxHeight: "65vh", overflowY: "auto" }}
+            >
               {conversations.map((conv) => {
                 const others = (conv.participants || []).filter(
                   (p) => !p.is_me,
@@ -225,7 +228,7 @@ const Messages = () => {
         </div>
 
         <div
-          className="ui-panel"
+          className="ui-panel messages-thread"
           style={{
             display: "flex",
             flexDirection: "column",
@@ -274,7 +277,10 @@ const Messages = () => {
                   )}
               </div>
 
-              <div style={{ flex: 1, overflowY: "auto", paddingRight: "4px" }}>
+              <div
+                className="messages-thread-body"
+                style={{ flex: 1, overflowY: "auto", paddingRight: "4px" }}
+              >
                 {messages.map((m) => {
                   if (m.is_system) {
                     return (

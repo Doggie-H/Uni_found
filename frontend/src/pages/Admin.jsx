@@ -10,7 +10,6 @@ import axiosClient from "../api/axios-client";
 import { AuthContext } from "../context/AuthContext";
 import {
   CheckCircle2,
-  XCircle,
   Package,
   Users,
   Inbox,
@@ -23,11 +22,7 @@ import MetricCard from "../components/ui/MetricCard";
 import EmptyState from "../components/ui/EmptyState";
 import AnalyticsChart from "../components/admin/AnalyticsChart";
 import getApiErrorMessage from "../utils/get-api-error-message";
-import {
-  getAdminCache,
-  setAdminCache,
-  clearAdminCacheByPrefix,
-} from "../utils/admin-list-cache";
+import { getAdminCache, setAdminCache } from "../utils/admin-list-cache";
 import { downloadCsv } from "../utils/export-csv";
 
 const Admin = () => {
@@ -364,7 +359,7 @@ const Admin = () => {
   const statusBadge = (status) => {
     const map = {
       PENDING: {
-        label: "Chờ duyệt",
+        label: "Đang chờ",
         bg: "var(--amber-bg)",
         color: "var(--amber)",
       },
@@ -374,7 +369,7 @@ const Admin = () => {
         color: "var(--blue)",
       },
       APPROVED: {
-        label: "Đã duyệt",
+        label: "Đã xác nhận",
         bg: "var(--green-bg)",
         color: "var(--green)",
       },
@@ -513,9 +508,9 @@ const Admin = () => {
 
       {/* Stats */}
       <div
+        className="admin-metrics-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
           gap: "12px",
           marginBottom: "32px",
           marginTop: "20px",
@@ -605,7 +600,7 @@ const Admin = () => {
           {pendingClaims.length === 0 ? (
             <EmptyState
               icon={Inbox}
-              text="Không có yêu cầu nào đang chờ duyệt"
+              text="Không có yêu cầu nào đang trao đổi"
             />
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>

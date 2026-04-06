@@ -368,10 +368,7 @@ const CreateItem = () => {
               />
             </div>
 
-            <div
-              className="ui-grid-2"
-              style={{ gap: "1rem", gridTemplateColumns: "1fr 1fr" }}
-            >
+            <div className="ui-grid-2 create-item-grid">
               <div className="form-group">
                 <label
                   style={{ display: "flex", alignItems: "center", gap: "6px" }}
@@ -445,7 +442,7 @@ const CreateItem = () => {
                 >
                   {formData.custody_type === "FINDER"
                     ? "Người tìm sẽ nhắn tin trực tiếp với bạn."
-                    : "Người tìm sẽ liên hệ admin để xin duyệt và trao đổi."}
+                    : "Người tìm sẽ nhắn tin để trao đổi trực tiếp với đầu mối đang giữ đồ."}
                 </div>
               </div>
             )}
@@ -470,10 +467,7 @@ const CreateItem = () => {
               />
             </div>
 
-            <div
-              className="ui-grid-2"
-              style={{ gap: "1rem", gridTemplateColumns: "1fr 1fr" }}
-            >
+            <div className="ui-grid-2 create-item-grid">
               <div className="form-group">
                 <label
                   style={{ display: "flex", alignItems: "center", gap: "6px" }}
@@ -552,15 +546,7 @@ const CreateItem = () => {
                 <Target size={16} color="var(--amber)" /> Checklist xác minh
                 theo danh mục <span style={{ color: "red" }}>*</span>
               </label>
-              <div
-                style={{
-                  display: "grid",
-                  gap: "8px",
-                  border: "1px dashed var(--border)",
-                  borderRadius: "10px",
-                  padding: "10px",
-                }}
-              >
+              <div className="create-item-checklist">
                 {checklistLabels.map((label, idx) => (
                   <div key={`${label}-${idx}`}>
                     <div

@@ -276,7 +276,7 @@ const ItemDetail = () => {
               {isLostPost
                 ? "Đây là bài đăng của người bị mất đồ. Nếu bạn đã nhặt được, hãy gửi yêu cầu trao đổi."
                 : item.custody_type === "ADMIN"
-                  ? "Vật phẩm đang được gửi tại khoa/admin: người tìm sẽ trao đổi và xin duyệt với admin."
+                  ? "Vật phẩm đang được gửi tại khoa/admin: người tìm có thể mở trao đổi ngay để xác minh và hẹn nhận."
                   : "Vật phẩm đang do người nhặt giữ: người tìm sẽ nhắn tin trực tiếp với người nhặt."}
             </div>
           </div>
@@ -525,7 +525,7 @@ const ItemDetail = () => {
                     {isLostPost
                       ? "Hãy mô tả bằng chứng bạn đã nhặt được món đồ này (địa điểm, thời điểm, tình trạng...) để người đăng xác thực."
                       : item.custody_type === "ADMIN"
-                        ? "Hãy miêu tả chi tiết để admin kiểm chứng trước khi duyệt."
+                        ? "Hãy miêu tả chi tiết để bên giữ vật phẩm kiểm chứng khi trao đổi."
                         : "Hãy miêu tả chi tiết để người nhặt đối chiếu khi trao đổi."}
                   </p>
                   <textarea
@@ -551,7 +551,7 @@ const ItemDetail = () => {
                       style={{ flex: "2", padding: "1.2rem" }}
                       disabled={submitting}
                     >
-                      {submitting ? "ĐANG GỬI..." : "GỬI YÊU CẦU DUYỆT"}
+                      {submitting ? "ĐANG GỬI..." : "GỬI YÊU CẦU TRAO ĐỔI"}
                     </button>
                   </div>
                 </form>

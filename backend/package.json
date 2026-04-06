@@ -5,12 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "node server.js",
-    "demo:reset": "node seed-demo.js",
-    "demo:chat:reset": "node seed-chat-demo.js",
-    "cleanup:data": "node cleanup-invalid-data.js",
-    "seed:traffic": "node seed-traffic.js",
-    "seed:more": "node seed-more-demo.js",
-    "seed:claims:more": "node seed-more-claims.js"
+    "demo:chat:reset": "node seed-chat-demo.js"
   },
   "keywords": [],
   "author": "",
