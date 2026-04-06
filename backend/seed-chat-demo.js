@@ -2,12 +2,12 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const User = require("./models/user.model");
-const Item = require("./models/item.model");
-const Claim = require("./models/claim.model");
-const Conversation = require("./models/conversation.model");
-const Message = require("./models/message.model");
-const Visit = require("./models/visit.model");
+const User = require("./models/user-model");
+const Item = require("./models/item-model");
+const Claim = require("./models/claim-model");
+const Conversation = require("./models/conversation-model");
+const Message = require("./models/message-model");
+const Visit = require("./models/visit-model");
 
 const mongoUri =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/lostandfound";
@@ -30,7 +30,7 @@ const USERS = [
     username: "admin",
     email: "admin@unifound.demo",
     mssv: null,
-    full_name: "Quan tri vien demo",
+    full_name: "Quản trị viên demo",
     role: "admin",
     is_ued_student: false,
     khoa: null,
@@ -38,59 +38,59 @@ const USERS = [
     khoa_hoc: null,
   },
   {
-    username: "3120202401",
-    email: "an.finder@ued.udn.vn",
-    mssv: "3120202401",
-    full_name: "Nguyen Minh An",
+    username: "3120226031",
+    email: "nguyen.minh.an@ued.udn.vn",
+    mssv: "3120226031",
+    full_name: "Nguyễn Minh An",
     role: "user",
     is_ued_student: true,
-    khoa: "Khoa Cong nghe & Khoa hoc Co ban",
-    nganh: "Cong nghe thong tin",
+    khoa: "Khoa Công nghệ & Khoa học Cơ bản",
+    nganh: "Công nghệ thông tin",
+    khoa_hoc: "K26",
+  },
+  {
+    username: "3121925014",
+    email: "tran.thu.ha@ued.udn.vn",
+    mssv: "3121925014",
+    full_name: "Trần Thu Hà",
+    role: "user",
+    is_ued_student: true,
+    khoa: "Khoa Khoa học Xã hội & Nhân văn",
+    nganh: "Sư phạm Ngữ văn",
+    khoa_hoc: "K25",
+  },
+  {
+    username: "3120124007",
+    email: "le.quoc.bao@ued.udn.vn",
+    mssv: "3120124007",
+    full_name: "Lê Quốc Bảo",
+    role: "user",
+    is_ued_student: true,
+    khoa: "Khoa Giáo dục",
+    nganh: "Giáo dục Tiểu học",
     khoa_hoc: "K24",
   },
   {
-    username: "3121902302",
-    email: "ha.seeker@ued.udn.vn",
-    mssv: "3121902302",
-    full_name: "Tran Thu Ha",
+    username: "3110123022",
+    email: "pham.gia.huy@ued.udn.vn",
+    mssv: "3110123022",
+    full_name: "Phạm Gia Huy",
     role: "user",
     is_ued_student: true,
-    khoa: "Khoa Khoa hoc Xa hoi & Nhan van",
-    nganh: "Su pham Ngu van",
+    khoa: "Khoa Xã hội & Quản lý",
+    nganh: "Công tác Xã hội",
     khoa_hoc: "K23",
   },
   {
-    username: "3120302203",
-    email: "bao.finder@ued.udn.vn",
-    mssv: "3120302203",
-    full_name: "Le Quoc Bao",
+    username: "3120322009",
+    email: "vo.thuy.linh@ued.udn.vn",
+    mssv: "3120322009",
+    full_name: "Võ Thùy Linh",
     role: "user",
     is_ued_student: true,
-    khoa: "Khoa Giao duc",
-    nganh: "Giao duc Tieu hoc",
+    khoa: "Khoa Công nghệ & Khoa học Cơ bản",
+    nganh: "Khoa học dữ liệu",
     khoa_hoc: "K22",
-  },
-  {
-    username: "3120102104",
-    email: "linh.seeker@ued.udn.vn",
-    mssv: "3120102104",
-    full_name: "Vo Thuy Linh",
-    role: "user",
-    is_ued_student: true,
-    khoa: "Khoa Cong nghe & Khoa hoc Co ban",
-    nganh: "Khoa hoc du lieu",
-    khoa_hoc: "K21",
-  },
-  {
-    username: "3124702005",
-    email: "huy.poster@ued.udn.vn",
-    mssv: "3124702005",
-    full_name: "Pham Gia Huy",
-    role: "user",
-    is_ued_student: true,
-    khoa: "Khoa Xa hoi & Quan ly",
-    nganh: "Cong tac Xa hoi",
-    khoa_hoc: "K20",
   },
 ];
 
@@ -112,24 +112,24 @@ async function seedChatDemo() {
   }
 
   const admin = createdUsers.find((u) => u.role === "admin");
-  const anFinder = createdUsers.find((u) => u.username === "3120202401");
-  const haSeeker = createdUsers.find((u) => u.username === "3121902302");
-  const baoFinder = createdUsers.find((u) => u.username === "3120302203");
-  const linhSeeker = createdUsers.find((u) => u.username === "3120102104");
-  const huyPoster = createdUsers.find((u) => u.username === "3124702005");
+  const anFinder = createdUsers.find((u) => u.username === "3120226031");
+  const haSeeker = createdUsers.find((u) => u.username === "3121925014");
+  const baoFinder = createdUsers.find((u) => u.username === "3120124007");
+  const linhSeeker = createdUsers.find((u) => u.username === "3120322009");
+  const huyPoster = createdUsers.find((u) => u.username === "3110123022");
 
   const items = await Item.insertMany([
     {
       title: "Tai nghe AirPods Pro",
       post_type: "FOUND",
-      category: "Do Dien Tu",
+      category: "Đồ Điện Tử",
       description:
-        "Tai nghe mau trang, hop sac con pin, nhat duoc tai san bong mini.",
+        "Tai nghe màu trắng, hộp sạc còn pin, nhặt được tại sân bóng mini.",
       brand: "Apple",
-      color: "Trang",
-      distinctive_features: "Vo hop co vet xuoc nho goc trai",
+      color: "Trắng",
+      distinctive_features: "Vỏ hộp có vết xước nhỏ góc trái",
       contact_info: anFinder.email,
-      location: "San bong da mini",
+      location: "Sân bóng đá mini",
       date_lost_found: todayYMD(2),
       found_at: createDate(2, 17, 30).toISOString(),
       image_url: "https://picsum.photos/seed/chat-airpods/900/600",
@@ -139,16 +139,16 @@ async function seedChatDemo() {
       created_at: createDate(2, 18, 0),
     },
     {
-      title: "Vi da den",
+      title: "Ví da đen",
       post_type: "FOUND",
-      category: "Vi/Giay to",
+      category: "Ví/Giấy tờ",
       description:
-        "Vi da den co the sinh vien ben trong, nhat duoc o hanh lang khu A.",
-      brand: "Khong ro",
-      color: "Den",
-      distinctive_features: "Co duong chi mau nau sat mep",
+        "Ví da đen có thẻ sinh viên bên trong, nhặt được ở hành lang khu A.",
+      brand: "Không rõ",
+      color: "Đen",
+      distinctive_features: "Có đường chỉ màu nâu sát mép",
       contact_info: baoFinder.email,
-      location: "Giang duong A - tang 2",
+      location: "Giảng đường A - tầng 2",
       date_lost_found: todayYMD(1),
       found_at: createDate(1, 10, 45).toISOString(),
       image_url: "https://picsum.photos/seed/chat-wallet/900/600",
@@ -160,14 +160,14 @@ async function seedChatDemo() {
     {
       title: "Laptop Dell XPS 13",
       post_type: "FOUND",
-      category: "Do Dien Tu",
+      category: "Đồ Điện Tử",
       description:
-        "Laptop bac co sticker nho, da duoc giao cho phong cong tac sinh vien.",
+        "Laptop bạc có sticker nhỏ, đã được giao cho phòng công tác sinh viên.",
       brand: "Dell",
-      color: "Bac",
-      distinctive_features: "Sticker nho goc phai ban phim",
+      color: "Bạc",
+      distinctive_features: "Sticker nhỏ góc phải bàn phím",
       contact_info: admin.email,
-      location: "Phong may tinh",
+      location: "Phòng máy tính",
       date_lost_found: todayYMD(5),
       found_at: createDate(5, 14, 0).toISOString(),
       image_url: "https://picsum.photos/seed/chat-laptop/900/600",
@@ -178,15 +178,15 @@ async function seedChatDemo() {
       created_at: createDate(5, 15, 10),
     },
     {
-      title: "Mat the sinh vien UED",
+      title: "Mất thẻ sinh viên UED",
       post_type: "LOST",
-      category: "Can cuoc/The",
-      description: "Minh bi mat the sinh vien mau xanh, co bao the nhua trong.",
+      category: "Căn cước/Thẻ",
+      description: "Mình bị mất thẻ sinh viên màu xanh, có bao thẻ nhựa trong.",
       brand: "UED",
       color: "Xanh",
-      distinctive_features: "Bao the trong co day deo xanh",
+      distinctive_features: "Bao thẻ trong có dây đeo xanh",
       contact_info: haSeeker.email,
-      location: "Thu vien trung tam",
+      location: "Thư viện trung tâm",
       date_lost_found: todayYMD(3),
       lost_at: createDate(3, 9, 30).toISOString(),
       image_url: "https://picsum.photos/seed/chat-student-card-lost/900/600",
@@ -196,15 +196,15 @@ async function seedChatDemo() {
       created_at: createDate(3, 10, 0),
     },
     {
-      title: "Mat balo den",
+      title: "Mất balo đen",
       post_type: "LOST",
-      category: "Khac",
-      description: "Balo vai mau den, ben trong co so tay va ao khoac mong.",
-      brand: "Khong ro",
-      color: "Den",
-      distinctive_features: "Moc khoa hinh sao mau do",
+      category: "Khác",
+      description: "Balo vải màu đen, bên trong có sổ tay và áo khoác mỏng.",
+      brand: "Không rõ",
+      color: "Đen",
+      distinctive_features: "Móc khóa hình sao màu đỏ",
       contact_info: linhSeeker.email,
-      location: "Sanh nha A",
+      location: "Sảnh nhà A",
       date_lost_found: todayYMD(4),
       lost_at: createDate(4, 8, 10).toISOString(),
       image_url: "https://picsum.photos/seed/chat-backpack-lost/900/600",
@@ -214,15 +214,15 @@ async function seedChatDemo() {
       created_at: createDate(4, 9, 0),
     },
     {
-      title: "The xe va chia khoa",
+      title: "Thẻ xe và chìa khóa",
       post_type: "FOUND",
-      category: "Chia Khoa",
-      description: "Nhat duoc bo the xe va chia khoa o bai giu xe sinh vien.",
+      category: "Chìa Khoá",
+      description: "Nhặt được bộ thẻ xe và chìa khóa ở bãi giữ xe sinh viên.",
       brand: "Honda",
-      color: "Den",
-      distinctive_features: "Moc khoa hinh gau bong nho",
+      color: "Đen",
+      distinctive_features: "Móc khóa hình gấu bông nhỏ",
       contact_info: huyPoster.email,
-      location: "Bai giu xe sinh vien",
+      location: "Bãi giữ xe sinh viên",
       date_lost_found: todayYMD(0),
       found_at: createDate(0, 12, 20).toISOString(),
       image_url: "https://picsum.photos/seed/chat-key/900/600",
@@ -234,7 +234,7 @@ async function seedChatDemo() {
   ]);
 
   const airpodsFound = items.find((i) => i.title === "Tai nghe AirPods Pro");
-  const walletAdmin = items.find((i) => i.title === "Vi da den");
+  const walletAdmin = items.find((i) => i.title === "Ví da đen");
   const laptopReturned = items.find((i) => i.title === "Laptop Dell XPS 13");
 
   const claims = await Claim.insertMany([
@@ -242,7 +242,7 @@ async function seedChatDemo() {
       item_id: airpodsFound._id,
       user_id: haSeeker._id,
       description:
-        "Toi co the mo ta vet xuoc o vo hop sac va ma serial tren iPhone da ket noi.",
+        "Tôi có thể mô tả vết xước ở vỏ hộp sạc và mã serial trên iPhone đã kết nối.",
       status: "CONNECTED",
       created_at: createDate(1, 9, 20),
     },
@@ -250,7 +250,7 @@ async function seedChatDemo() {
       item_id: walletAdmin._id,
       user_id: linhSeeker._id,
       description:
-        "Toi nho ro trong vi co the sinh vien va giay bien lai mau hong.",
+        "Tôi nhớ rõ trong ví có thẻ sinh viên và giấy biên lai màu hồng.",
       status: "PENDING",
       created_at: createDate(0, 14, 5),
     },
@@ -258,7 +258,7 @@ async function seedChatDemo() {
       item_id: laptopReturned._id,
       user_id: haSeeker._id,
       description:
-        "Toi co the xac nhan sticker va thong tin dang nhap trong may.",
+        "Tôi có thể xác nhận sticker và thông tin đăng nhập trong máy.",
       status: "RETURN_CONFIRMED",
       seeker_confirmed: true,
       holder_confirmed: true,
@@ -310,48 +310,48 @@ async function seedChatDemo() {
       conversation_id: convoFinderSeeker._id,
       sender_id: null,
       is_system: true,
-      system_label: "He thong",
-      body: "He thong da ket noi nguoi tim va nguoi nhat. Hai ben vui long trao doi de xac minh.",
+      system_label: "Hệ thống",
+      body: "Hệ thống đã kết nối người tìm và người nhặt. Hai bên vui lòng trao đổi để xác minh.",
       created_at: createDate(1, 9, 31),
     },
     {
       conversation_id: convoFinderSeeker._id,
       sender_id: haSeeker._id,
-      body: "Chao ban, minh nghi day la AirPods cua minh. Minh mo ta duoc vet xuoc o vo hop.",
+      body: "Chào bạn, mình nghĩ đây là AirPods của mình. Mình mô tả được vết xước ở vỏ hộp.",
       created_at: createDate(1, 9, 33),
     },
     {
       conversation_id: convoFinderSeeker._id,
       sender_id: anFinder._id,
-      body: "Ban gui them mo ta vi tri vet xuoc va phu kien ben trong de minh doi chieu nhe.",
+      body: "Bạn gửi thêm mô tả vị trí vết xước và phụ kiện bên trong để mình đối chiếu nhé.",
       created_at: createDate(1, 9, 40),
     },
     {
       conversation_id: convoPendingAdmin._id,
       sender_id: null,
       is_system: true,
-      system_label: "He thong",
-      body: "Yeu cau nhan lai da duoc tao va gui den admin.",
+      system_label: "Hệ thống",
+      body: "Yêu cầu nhận lại đã được tạo và gửi đến admin.",
       created_at: createDate(0, 14, 11),
     },
     {
       conversation_id: convoPendingAdmin._id,
       sender_id: linhSeeker._id,
-      body: "Em da gui thong tin xac minh vi da. Mong admin ho tro duyet.",
+      body: "Em đã gửi thông tin xác minh ví da. Mong admin hỗ trợ duyệt.",
       created_at: createDate(0, 14, 13),
     },
     {
       conversation_id: convoReturnedAdmin._id,
       sender_id: null,
       is_system: true,
-      system_label: "He thong",
-      body: "Admin da duyet yeu cau va ghi nhan xac nhan hoan tra 2 chieu.",
+      system_label: "Hệ thống",
+      body: "Admin đã duyệt yêu cầu và ghi nhận xác nhận hoàn trả 2 chiều.",
       created_at: createDate(1, 16, 31),
     },
     {
       conversation_id: convoReturnedAdmin._id,
       sender_id: admin._id,
-      body: "Ho so da hoan tat. Cam on ban da phoi hop xac nhan.",
+      body: "Hồ sơ đã hoàn tất. Cảm ơn bạn đã phối hợp xác nhận.",
       created_at: createDate(1, 16, 34),
     },
   ]);
@@ -373,16 +373,16 @@ async function seedChatDemo() {
   // Approved tất cả demo items
   await Item.updateMany({}, { approval_status: "APPROVED" });
 
-  console.log("Da tao moi DB demo de test tinh nang nhan tin.");
-  console.log("Tai khoan:");
+  console.log("Đã tạo mới DB demo để test tính năng nhắn tin.");
+  console.log("Tài khoản:");
   console.log(`- Admin: admin / ${ADMIN_PASSWORD}`);
-  console.log(`- User chung: mat khau ${USER_PASSWORD}`);
-  console.log("Danh sach user:");
-  console.log("- 3120202401 (Nguyen Minh An) - finder");
-  console.log("- 3121902302 (Tran Thu Ha) - seeker");
-  console.log("- 3120302203 (Le Quoc Bao) - finder");
-  console.log("- 3120102104 (Vo Thuy Linh) - seeker");
-  console.log("- 3124702005 (Pham Gia Huy) - poster");
+  console.log(`- User chung: mật khẩu ${USER_PASSWORD}`);
+  console.log("Danh sách user:");
+  console.log("- 3120226031 (Nguyễn Minh An) - finder");
+  console.log("- 3121925014 (Trần Thu Hà) - seeker");
+  console.log("- 3120124007 (Lê Quốc Bảo) - finder");
+  console.log("- 3120322009 (Võ Thùy Linh) - seeker");
+  console.log("- 3110123022 (Phạm Gia Huy) - poster");
   console.log(
     `Items: ${items.length}, Claims: ${claims.length}, Conversations: ${conversations.length}`,
   );
@@ -391,7 +391,7 @@ async function seedChatDemo() {
 }
 
 seedChatDemo().catch(async (error) => {
-  console.error("Seed chat demo that bai:", error.message);
+  console.error("Seed chat demo thất bại:", error.message);
   try {
     await mongoose.disconnect();
   } catch {}

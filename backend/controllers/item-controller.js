@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const Item = require("../models/item.model");
-const Claim = require("../models/claim.model");
+const Item = require("../models/item-model");
+const Claim = require("../models/claim-model");
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const toSafeInt = (value, fallback) => {
@@ -88,12 +88,18 @@ const toClientItem = (item) => ({
   image_url: item.image_url,
   custody_type: item.custody_type || "FINDER",
   status: item.status,
+  approval_status: item.approval_status || "PENDING",
   user_id: getOwnerId(item.user_id),
   posted_by: toPostedBy(item.user_id),
   created_at: item.created_at,
 });
 
-// Lấy danh sách items, có tìm kiếm + lọc danh mục
+const assertOwner = (item, req) => {
+  if (!item || !req?.user?.id) return false;
+  return getOwnerId(item.user_id) === String(req.user.id);
+};
+
+// Lay danh sach items, co tim kiem + loc danh muc
 exports.getItems = (req, res) => {
   const {
     keyword,
@@ -183,7 +189,7 @@ exports.getItemDetail = (req, res) => {
     .catch((err) => res.status(500).json({ error: err.message }));
 };
 
-// Tạo 1 item mới
+// Tao 1 item moi
 exports.createItem = (req, res) => {
   const {
     title,
@@ -315,7 +321,7 @@ exports.createItem = (req, res) => {
   Item.create({
     title: normalizedTitle,
     post_type: normalizedPostType,
-    category: category || "Khác",
+    category: category || "Khac",
     description: normalizedDescription,
     brand: typeof brand === "string" ? brand.trim().slice(0, 120) : "",
     color: typeof color === "string" ? color.trim().slice(0, 80) : "",
@@ -339,7 +345,7 @@ exports.createItem = (req, res) => {
     .catch((err) => res.status(500).json({ error: err.message }));
 };
 
-// Cập nhật trạng thái item (dành cho admin)
+// Cap nhat trang thai item (danh cho admin)
 exports.updateItem = (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -372,7 +378,7 @@ exports.updateItem = (req, res) => {
     .catch((err) => res.status(500).json({ error: err.message }));
 };
 
-// Duyet/reject item (dành cho admin) - control visibility
+// Duyet/reject item (danh cho admin) - control visibility
 exports.approveItem = (req, res) => {
   const { id } = req.params;
 
@@ -416,7 +422,95 @@ exports.getPendingItems = (req, res) => {
     .catch((err) => res.status(500).json({ error: err.message }));
 };
 
-// Xóa item (dành cho admin)
+// Lay danh sach bai dang cua chinh nguoi dung (ca LOST va FOUND)
+exports.getMyItems = (req, res) => {
+  const { post_type, approval_status, status } = req.query;
+  const query = { user_id: req.user.id };
+
+  if (typeof post_type === "string" && ["FOUND", "LOST"].includes(post_type)) {
+    query.post_type = post_type;
+  }
+  if (
+    typeof approval_status === "string" &&
+    ["PENDING", "APPROVED", "REJECTED"].includes(approval_status)
+  ) {
+    query.approval_status = approval_status;
+  }
+  if (typeof status === "string" && ["FOUND", "RETURNED"].includes(status)) {
+    query.status = status;
+  }
+
+  Item.find(query)
+    .populate("user_id", "username full_name khoa nganh khoa_hoc")
+    .sort({ created_at: -1 })
+    .lean()
+    .then((rows) => res.json(rows.map(toClientItem)))
+    .catch((err) => res.status(500).json({ error: err.message }));
+};
+
+// Nguoi dang bai tu cap nhat trang thai da tim thay/da hoan tat
+exports.updateMyItemStatus = (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(404).json({ error: "Khong tim thay item" });
+  }
+  if (!["FOUND", "RETURNED"].includes(status)) {
+    return res.status(400).json({ error: "Trang thai khong hop le" });
+  }
+
+  Item.findById(id)
+    .then(async (item) => {
+      if (!item) return res.status(404).json({ error: "Khong tim thay item" });
+      if (!assertOwner(item, req)) {
+        return res
+          .status(403)
+          .json({ error: "Ban khong co quyen cap nhat bai dang nay." });
+      }
+
+      item.status = status;
+      item.returned_at = status === "RETURNED" ? new Date() : null;
+      await item.save();
+
+      if (status === "RETURNED") {
+        await Claim.updateMany(
+          { item_id: item._id, status: "CONNECTED" },
+          { $set: { status: "RETURN_CONFIRMED" } },
+        );
+      }
+
+      return res.json({
+        message: "Da cap nhat trang thai",
+        item_id: item._id.toString(),
+      });
+    })
+    .catch((err) => res.status(500).json({ error: err.message }));
+};
+
+// Nguoi dang bai co the xoa bai cua minh
+exports.deleteMyItem = (req, res) => {
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(404).json({ error: "Khong tim thay item" });
+  }
+
+  Item.findById(id)
+    .then(async (item) => {
+      if (!item) return res.status(404).json({ error: "Khong tim thay item" });
+      if (!assertOwner(item, req)) {
+        return res
+          .status(403)
+          .json({ error: "Ban khong co quyen xoa bai dang nay." });
+      }
+
+      await Item.deleteOne({ _id: item._id });
+      await Claim.deleteMany({ item_id: item._id });
+      return res.json({ message: "Da xoa bai dang cua ban" });
+    })
+    .catch((err) => res.status(500).json({ error: err.message }));
+};
+
+// Xoa item (danh cho admin)
 exports.deleteItem = (req, res) => {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {

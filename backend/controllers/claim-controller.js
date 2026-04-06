@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
-const Claim = require("../models/claim.model");
-const Item = require("../models/item.model");
-const User = require("../models/user.model");
-const Conversation = require("../models/conversation.model");
-const Message = require("../models/message.model");
+const Claim = require("../models/claim-model");
+const Item = require("../models/item-model");
+const User = require("../models/user-model");
+const Conversation = require("../models/conversation-model");
+const Message = require("../models/message-model");
 
 const toSafeInt = (value, fallback) => {
   const parsed = Number.parseInt(value, 10);
@@ -56,7 +56,7 @@ const sendSystemMessage = async (conversationId, body) => {
   });
 };
 
-// Tạo mới claim và tự động mở kênh chat đúng vai trò.
+// Tao moi claim va tu dong mo kenh chat dung vai tro.
 exports.createClaim = (req, res) => {
   const { item_id, description } = req.body;
 
@@ -106,7 +106,7 @@ exports.createClaim = (req, res) => {
         });
       }
 
-      // Tất cả claim đều CONNECTED ngay (không cần admin duyệt)
+      // Tat ca claim deu CONNECTED ngay (khong can admin duyet)
       const newClaim = await Claim.create({
         item_id,
         user_id: req.user.id,

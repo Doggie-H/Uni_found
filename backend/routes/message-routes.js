@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const messageController = require("../controllers/message.controller");
-const { authenticate } = require("../middleware/auth.middleware");
+const messageController = require("../controllers/message-controller");
+const { authenticate } = require("../middleware/auth-middleware");
 
 router.get("/conversations", authenticate, messageController.getConversations);
 router.get(

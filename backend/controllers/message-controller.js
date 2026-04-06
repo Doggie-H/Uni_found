@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
-const Conversation = require("../models/conversation.model");
-const Message = require("../models/message.model");
+const Conversation = require("../models/conversation-model");
+const Message = require("../models/message-model");
 
 const toProfileLabel = (u) => {
   const khoa = u?.khoa ? String(u.khoa).trim() : "";
@@ -185,3 +185,4 @@ exports.sendMessage = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+

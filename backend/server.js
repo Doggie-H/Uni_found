@@ -6,12 +6,12 @@ const path = require("path");
 require("dotenv").config();
 
 const { connectDatabase } = require("./database");
-const authRoutes = require("./routes/auth.routes");
-const analyticsRoutes = require("./routes/analytics.routes");
-const itemRoutes = require("./routes/item.routes");
-const claimRoutes = require("./routes/claim.routes");
-const userRoutes = require("./routes/user.routes");
-const messageRoutes = require("./routes/message.routes");
+const authRoutes = require("./routes/auth-routes");
+const analyticsRoutes = require("./routes/analytics-routes");
+const itemRoutes = require("./routes/item-routes");
+const claimRoutes = require("./routes/claim-routes");
+const userRoutes = require("./routes/user-routes");
+const messageRoutes = require("./routes/message-routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;

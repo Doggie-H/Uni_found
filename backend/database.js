@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const User = require("./models/user.model");
+const User = require("./models/user-model");
 
 const createDefaultAdmin = async () => {
   const existingAdmin = await User.findOne({ username: "admin" }).lean();
@@ -34,3 +34,4 @@ const connectDatabase = async () => {
 };
 
 module.exports = { connectDatabase };
+

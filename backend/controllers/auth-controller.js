@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const User = require("../models/user.model");
+const User = require("../models/user-model");
 
 const normalizeEmail = (email) =>
   String(email || "")
@@ -24,8 +24,8 @@ const getValidKhoaHocRange = () => {
 
 const toKhoaHocCode = (year) => `K${String(year % 100).padStart(2, "0")}`;
 
-// Parse MSV để lấy thông tin khóa học
-// Cấu trúc MSSV UED: AA BBB CC DDD
+// Parse MSSV de lay thong tin khoa hoc
+// Cau truc MSSV UED: AA BBB CC DDD
 const parseMSV = (msv) => {
   if (!validateMSV(msv)) {
     throw new Error("Ma so sinh vien phai co dung 10 chu so.");

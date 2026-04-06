@@ -40,8 +40,20 @@ Trong terminal backend:
 
 ```bash
 npm run seed
-node seed-claims.js
 ```
+
+Sau khi seed xong, có thể đăng nhập nhanh:
+
+- Admin: username `admin`, password `admin123456`
+- User demo: dùng MSSV hoặc email ở dữ liệu mẫu, password chung `123456`
+
+Ví dụ user demo:
+
+- 3120226031 / 123456
+- 3121925014 / 123456
+- 3120124007 / 123456
+- 3110123022 / 123456
+- 3120322009 / 123456
 
 ## 5) Chuẩn bị frontend
 
@@ -61,6 +73,8 @@ Mở trình duyệt tại:
 
 - Username: `admin`
 - Password: lấy theo biến `ADMIN_PASSWORD` trong file `.env`
+
+Lưu ý: tài khoản admin mặc định (tạo tự động) và dữ liệu demo (tạo bởi `npm run seed`) là 2 cơ chế khác nhau.
 
 ## 7) Nếu tester gặp lỗi thường gặp
 

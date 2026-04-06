@@ -1,7 +1,7 @@
-const Visit = require("../models/visit.model");
-const Item = require("../models/item.model");
-const User = require("../models/user.model");
-const Claim = require("../models/claim.model");
+const Visit = require("../models/visit-model");
+const Item = require("../models/item-model");
+const User = require("../models/user-model");
+const Claim = require("../models/claim-model");
 
 const TRACK_EVENT_TYPES = new Set(["page_view"]);
 const TRACK_SOURCES = new Set(["web", "mobile", "seed", "demo", "unknown"]);

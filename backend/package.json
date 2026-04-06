@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "node server.js",
+    "seed": "node seed-chat-demo.js",
     "demo:chat:reset": "node seed-chat-demo.js"
   },
   "keywords": [],

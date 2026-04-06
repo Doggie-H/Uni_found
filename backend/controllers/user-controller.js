@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
-const User = require("../models/user.model");
-const Item = require("../models/item.model");
-const Claim = require("../models/claim.model");
+const User = require("../models/user-model");
+const Item = require("../models/item-model");
+const Claim = require("../models/claim-model");
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const toSafeInt = (value, fallback) => {
   const parsed = Number.parseInt(value, 10);
@@ -128,3 +128,4 @@ exports.deleteUser = (req, res) => {
     })
     .catch((err) => res.status(500).json({ error: err.message }));
 };
+
