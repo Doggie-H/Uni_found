@@ -2,13 +2,19 @@ const express = require("express");
 const router = express.Router();
 const itemController = require("../controllers/item-controller");
 const { authenticate, requireAdmin } = require("../middleware/auth-middleware");
-const { uploadItemImage } = require("../middleware/upload-middleware");
+const {
+  uploadItemImage,
+  ITEM_IMAGE_MAX_COUNT,
+} = require("../middleware/upload-middleware");
 
 router.get("/", itemController.getItems);
 router.post(
   "/",
   authenticate,
-  uploadItemImage.single("image"),
+  uploadItemImage.fields([
+    { name: "images", maxCount: ITEM_IMAGE_MAX_COUNT },
+    { name: "image", maxCount: 1 },
+  ]),
   itemController.createItem,
 );
 router.get("/mine", authenticate, itemController.getMyItems);

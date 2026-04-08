@@ -16,6 +16,7 @@ const getSortOption = (sortBy, order, allowed) => {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const PHONE_RE = /(?:\+84|0)(?:3|5|7|8|9)\d{8}\b/;
 const URL_RE = /^https?:\/\//i;
+const ITEM_IMAGE_MAX_COUNT = 5;
 
 const isValidContactInfo = (value) => {
   if (typeof value !== "string") return false;
@@ -85,7 +86,12 @@ const toClientItem = (item) => ({
     : [],
   location: item.location,
   date_lost_found: item.date_lost_found,
-  image_url: item.image_url,
+  image_url: item.image_url || item.image_urls?.[0] || null,
+  image_urls: Array.isArray(item.image_urls)
+    ? item.image_urls
+    : item.image_url
+      ? [item.image_url]
+      : [],
   custody_type: item.custody_type || "FINDER",
   status: item.status,
   approval_status: item.approval_status || "PENDING",
@@ -258,15 +264,27 @@ exports.createItem = (req, res) => {
   const today = new Date();
   today.setHours(23, 59, 59, 999);
 
-  const uploadedImageUrl = req.file
-    ? `${req.protocol}://${req.get("host")}/uploads/items/${req.file.filename}`
-    : null;
+  const uploadedFiles = [
+    ...(Array.isArray(req.files?.images) ? req.files.images : []),
+    ...(Array.isArray(req.files?.image) ? req.files.image : []),
+  ].slice(0, ITEM_IMAGE_MAX_COUNT);
 
-  const normalizedImageUrl =
-    uploadedImageUrl ||
-    (typeof image_url === "string" && image_url.trim()
-      ? image_url.trim()
-      : null);
+  const uploadedImageUrls = uploadedFiles.map(
+    (file) =>
+      `${req.protocol}://${req.get("host")}/uploads/items/${file.filename}`,
+  );
+
+  const manualImageUrl =
+    typeof image_url === "string" && image_url.trim() ? image_url.trim() : null;
+
+  const normalizedImageUrls = Array.from(
+    new Set([
+      ...uploadedImageUrls,
+      ...(manualImageUrl ? [manualImageUrl] : []),
+    ]),
+  ).slice(0, ITEM_IMAGE_MAX_COUNT);
+
+  const normalizedImageUrl = normalizedImageUrls[0] || null;
   const normalizedCustodyType = ["FINDER", "ADMIN"].includes(custody_type)
     ? custody_type
     : "FINDER";
@@ -312,11 +330,6 @@ exports.createItem = (req, res) => {
   }
 
   const normalizedChecklist = normalizeChecklist(category_checklist);
-  if (normalizedChecklist.length < 2) {
-    return res.status(400).json({
-      error: "Checklist theo danh muc can it nhat 2 muc thong tin.",
-    });
-  }
 
   Item.create({
     title: normalizedTitle,
@@ -333,9 +346,11 @@ exports.createItem = (req, res) => {
     location: normalizedLocation,
     date_lost_found: dateValue,
     image_url: normalizedImageUrl,
+    image_urls: normalizedImageUrls,
     custody_type: resolvedCustodyType,
     user_id: req.user.id,
     status: "FOUND",
+    approval_status: "APPROVED",
   })
     .then((item) =>
       res

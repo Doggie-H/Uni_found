@@ -133,7 +133,7 @@ const MyPosts = () => {
         </div>
         <h1 className="page-title">Bài đăng của tôi</h1>
         <p className="page-subtitle">
-          Theo dõi và quản lý cả bài tìm đồ và bài nhặt được của bạn.
+          Theo dõi và quản lý các bài báo mất và bài nhặt được bạn đã đăng.
         </p>
       </div>
 
@@ -149,10 +149,10 @@ const MyPosts = () => {
           Tổng: {stats.total}
         </div>
         <div className="ui-panel" style={{ padding: "10px 12px" }}>
-          Tìm đồ: {stats.lost}
+          Báo mất: {stats.lost}
         </div>
         <div className="ui-panel" style={{ padding: "10px 12px" }}>
-          Nhặt đồ: {stats.found}
+          Nhặt được: {stats.found}
         </div>
         <div className="ui-panel" style={{ padding: "10px 12px" }}>
           Hoàn tất: {stats.done}
@@ -269,7 +269,7 @@ const MyPosts = () => {
                   </Link>
                 </td>
                 <td style={{ padding: "10px" }}>
-                  {item.post_type === "LOST" ? "Tìm đồ" : "Nhặt đồ"}
+                  {item.post_type === "LOST" ? "Bài báo mất" : "Bài nhặt được"}
                 </td>
                 <td style={{ padding: "10px" }}>
                   {approvalLabel[item.approval_status] || item.approval_status}

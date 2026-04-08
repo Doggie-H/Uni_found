@@ -136,18 +136,20 @@ const MainLayout = () => {
                   </Link>
                 )}
 
-                <Link
-                  to="/messages"
+                <button
+                  type="button"
+                  onClick={() =>
+                    alert("Nhắn tin đang phát triển (Coming Soon).")
+                  }
                   className="btn btn-ghost btn-sm"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
-                    textDecoration: "none",
                   }}
                 >
                   <MessageCircle size={14} /> Nhắn tin
-                </Link>
+                </button>
 
                 <Link
                   to="/my-posts"

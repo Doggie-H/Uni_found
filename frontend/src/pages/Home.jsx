@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../api/axios-client";
 import ItemCard from "../components/ItemCard";
 import { AuthContext } from "../context/AuthContext";
@@ -71,12 +71,23 @@ const getItemAgeInDays = (item) => {
 
 const Home = () => {
   const { user } = useContext(AuthContext);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [timeFilter, setTimeFilter] = useState("all");
   const [loading, setLoading] = useState(false);
+  const [successNotice, setSuccessNotice] = useState("");
+
+  useEffect(() => {
+    const message = location.state?.successMessage;
+    if (!message) return;
+
+    setSuccessNotice(message);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate]);
 
   const fetchItems = useCallback(
     async (kw = keyword, cat = category) => {
@@ -215,7 +226,7 @@ const Home = () => {
                   marginBottom: "var(--s4)",
                 }}
               >
-                Mất đồ?
+                Bị mất đồ?
                 <br />
                 <span style={{ color: "var(--red)" }}>Cộng đồng</span> sẽ
                 <br />
@@ -231,8 +242,8 @@ const Home = () => {
                   maxWidth: "380px",
                 }}
               >
-                Đăng bài tìm đồ bị mất hoặc đăng bài nhặt được để hai bên kết
-                nối và xác minh nhanh chóng.
+                Đăng bài báo mất hoặc bài nhặt được để mọi người dễ đối chiếu và
+                liên hệ nhanh hơn.
               </p>
 
               {/* 2 CTA chính — khác nhau về kích thước, không giống nhau */}
@@ -254,7 +265,7 @@ const Home = () => {
                     gap: "8px",
                   }}
                 >
-                  Đăng bài mất/nhặt đồ →
+                  Đăng tin tìm hoặc nhặt được đồ →
                 </Link>
                 <button
                   onClick={() => {
@@ -265,7 +276,7 @@ const Home = () => {
                   style={{ display: "flex", alignItems: "center", gap: "6px" }}
                 >
                   <Search size={16} />
-                  Tìm đồ của tôi
+                  Tìm bài đăng của tôi
                 </button>
               </div>
             </div>
@@ -321,13 +332,13 @@ const Home = () => {
                 {[
                   {
                     n: openLostPosts,
-                    label: "Bài tìm đồ mở",
+                    label: "Bài tìm đồ đang mở",
                     color: "var(--red)",
                     bg: "var(--red-bg)",
                   },
                   {
                     n: openFoundPosts,
-                    label: "Bài nhặt đồ mở",
+                    label: "Bài nhặt được đang mở",
                     color: "var(--amber)",
                     bg: "var(--amber-bg)",
                   },
@@ -430,6 +441,31 @@ const Home = () => {
             padding: "0 var(--s5)",
           }}
         >
+          {successNotice ? (
+            <div
+              className="ui-panel"
+              style={{
+                marginBottom: "var(--s4)",
+                border: "1px solid rgba(28,163,74,0.35)",
+                background: "rgba(28,163,74,0.08)",
+                color: "var(--green)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "10px",
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>{successNotice}</span>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setSuccessNotice("")}
+                style={{ flexShrink: 0 }}
+              >
+                Đóng
+              </button>
+            </div>
+          ) : null}
+
           {/* Section header */}
           <div
             style={{

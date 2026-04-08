@@ -12,6 +12,7 @@ import PageHeader from "../components/ui/PageHeader";
 import SurfaceCard from "../components/ui/SurfaceCard";
 import EmptyState from "../components/ui/EmptyState";
 import getApiErrorMessage from "../utils/get-api-error-message";
+import { getItemImageCount, getPrimaryItemImage } from "../utils/item-images";
 import {
   getAdminCache,
   setAdminCache,
@@ -320,6 +321,8 @@ const AdminItems = () => {
               const uc = urgencyColor(d);
               const categoryLabel = normalizeCategory(item.category);
               const categoryTone = categoryColor[categoryLabel] || "#6B7280";
+              const primaryImageUrl = getPrimaryItemImage(item);
+              const imageCount = getItemImageCount(item);
               return (
                 <tr
                   key={item.id}
@@ -334,18 +337,39 @@ const AdminItems = () => {
                         gap: "10px",
                       }}
                     >
-                      {item.image_url ? (
-                        <img
-                          src={item.image_url}
-                          alt={item.title || "Ảnh đồ vật"}
-                          style={{
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "6px",
-                            objectFit: "cover",
-                            flexShrink: 0,
-                          }}
-                        />
+                      {primaryImageUrl ? (
+                        <div style={{ position: "relative", flexShrink: 0 }}>
+                          <img
+                            src={primaryImageUrl}
+                            alt={item.title || "Ảnh đồ vật"}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "6px",
+                              objectFit: "cover",
+                              flexShrink: 0,
+                            }}
+                          />
+                          {imageCount > 1 ? (
+                            <span
+                              style={{
+                                position: "absolute",
+                                right: "-6px",
+                                bottom: "-6px",
+                                padding: "2px 5px",
+                                borderRadius: "999px",
+                                background: "rgba(15, 23, 42, 0.9)",
+                                color: "#fff",
+                                fontSize: "0.65rem",
+                                fontWeight: 700,
+                                lineHeight: 1,
+                                border: "1px solid rgba(255,255,255,0.9)",
+                              }}
+                            >
+                              {imageCount}
+                            </span>
+                          ) : null}
+                        </div>
                       ) : (
                         <div
                           style={{

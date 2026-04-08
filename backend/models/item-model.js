@@ -20,6 +20,7 @@ const itemSchema = new mongoose.Schema(
     category_checklist: [{ type: String, default: "" }],
     date_lost_found: { type: String, default: null },
     image_url: { type: String, default: null },
+    image_urls: [{ type: String, default: "" }],
     custody_type: {
       type: String,
       enum: ["FINDER", "ADMIN"],
@@ -29,7 +30,7 @@ const itemSchema = new mongoose.Schema(
     approval_status: {
       type: String,
       enum: ["PENDING", "APPROVED", "REJECTED"],
-      default: "PENDING",
+      default: "APPROVED",
     },
     returned_at: { type: Date, default: null },
     user_id: {

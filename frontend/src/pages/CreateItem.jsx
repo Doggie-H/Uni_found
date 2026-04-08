@@ -25,51 +25,23 @@ const CATEGORIES = [
 const POST_TYPES = [
   {
     value: "FOUND",
-    label: "Tôi nhặt được vật phẩm",
-    title: "Đăng tin Nhặt được đồ",
-    helper:
-      "Cung cấp thông tin đủ rõ để người mất nhận diện nhưng tránh lộ bí mật quan trọng.",
+    label: "Tôi nhặt được đồ",
+    title: "Đăng tin đồ nhặt được",
+    helper: "Ghi rõ đặc điểm, vị trí và thời điểm để người báo mất dễ nhận ra.",
   },
   {
     value: "LOST",
-    label: "Tôi đang tìm vật phẩm bị mất",
-    title: "Đăng tin Tìm đồ thất lạc",
+    label: "Tôi đang tìm đồ bị mất",
+    title: "Đăng tin đồ thất lạc",
     helper:
-      "Mô tả chính xác đặc điểm để người nhặt dễ đối chiếu và liên hệ nhanh.",
+      "Mô tả ngắn gọn và chính xác để người nhặt dễ đối chiếu và liên hệ.",
   },
 ];
-
-const CATEGORY_CHECKLISTS = {
-  "Ví/Giấy tờ": [
-    "Chất liệu/kiểu ví hoặc giấy tờ",
-    "Vật dụng bên trong nổi bật",
-    "Điểm nhận dạng riêng (vết xước, màu chỉ, dấu dán)",
-  ],
-  "Đồ Điện Tử": [
-    "Model/thiết bị cụ thể",
-    "Phụ kiện đi kèm (sạc, ốp, tai nghe)",
-    "Dấu hiệu nhận dạng (hình nền, sticker, vết trầy)",
-  ],
-  "Chìa Khoá": [
-    "Loại chìa khóa (xe, phòng, tủ)",
-    "Số lượng chìa và móc khóa",
-    "Dấu hiệu nhận dạng đặc biệt",
-  ],
-  "Căn cước/Thẻ": [
-    "Loại thẻ/giấy tờ",
-    "Màu sắc và vỏ bọc",
-    "Thông tin che mờ để xác minh khi trao đổi",
-  ],
-  Khác: [
-    "Mô tả hình dáng tổng quan",
-    "Dấu hiệu đặc trưng dễ nhận biết",
-    "Thông tin đi kèm hoặc bối cảnh liên quan",
-  ],
-};
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const PHONE_RE = /(?:\+84|0)(?:3|5|7|8|9)\d{8}\b/;
 const URL_RE = /^https?:\/\//i;
+const ITEM_IMAGE_MAX_COUNT = 5;
 
 const CreateItem = () => {
   const { user } = useContext(AuthContext);
@@ -92,29 +64,18 @@ const CreateItem = () => {
   });
 
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState("");
-  const [checklistAnswers, setChecklistAnswers] = useState(["", "", ""]);
-
-  const checklistLabels =
-    CATEGORY_CHECKLISTS[formData.category] || CATEGORY_CHECKLISTS.Khác;
-
-  useEffect(() => {
-    setChecklistAnswers((prev) => {
-      const next = [...prev];
-      while (next.length < checklistLabels.length) next.push("");
-      return next.slice(0, checklistLabels.length);
-    });
-  }, [formData.category, checklistLabels.length]);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
 
   useEffect(() => {
     return () => {
-      if (imagePreviewUrl && imagePreviewUrl.startsWith("blob:")) {
-        URL.revokeObjectURL(imagePreviewUrl);
-      }
+      imagePreviewUrls.forEach((url) => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
     };
-  }, [imagePreviewUrl]);
+  }, [imagePreviewUrls]);
 
   if (!user) {
     return (
@@ -153,39 +114,49 @@ const CreateItem = () => {
   };
 
   const handleImageFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setImageFile(null);
-      setImagePreviewUrl("");
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      setImageFiles([]);
+      setImagePreviewUrls([]);
+      return;
+    }
+
+    if (files.length > ITEM_IMAGE_MAX_COUNT) {
+      setError(`Chỉ được chọn tối đa ${ITEM_IMAGE_MAX_COUNT} ảnh.`);
+      e.target.value = "";
       return;
     }
 
     const allowed = ["image/png", "image/jpeg", "image/jpg"];
-    if (!allowed.includes(file.type)) {
-      setError("Chỉ hỗ trợ file ảnh PNG hoặc JPG/JPEG.");
-      e.target.value = "";
-      return;
-    }
+    for (const file of files) {
+      if (!allowed.includes(file.type)) {
+        setError("Chỉ hỗ trợ file ảnh PNG hoặc JPG/JPEG.");
+        e.target.value = "";
+        return;
+      }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Ảnh vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.");
-      e.target.value = "";
-      return;
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Mỗi ảnh tối đa 5MB. Vui lòng chọn ảnh nhỏ hơn.");
+        e.target.value = "";
+        return;
+      }
     }
 
     setError("");
-    if (imagePreviewUrl && imagePreviewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreviewUrl);
-    }
-    const preview = URL.createObjectURL(file);
-    setImageFile(file);
-    setImagePreviewUrl(preview);
+    imagePreviewUrls.forEach((url) => {
+      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+    });
+
+    const previews = files.map((file) => URL.createObjectURL(file));
+    setImageFiles(files);
+    setImagePreviewUrls(previews);
     setFormData((prev) => ({ ...prev, image_url: "" }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
 
     const selectedDate =
       formData.post_type === "LOST" ? formData.lost_at : formData.found_at;
@@ -226,16 +197,6 @@ const CreateItem = () => {
       return;
     }
 
-    const normalizedChecklist = checklistAnswers
-      .map((v) => (v || "").trim())
-      .filter(Boolean);
-    if (normalizedChecklist.length < 2) {
-      setError(
-        "Vui lòng điền ít nhất 2 mục checklist nhận dạng theo danh mục.",
-      );
-      return;
-    }
-
     setLoading(true);
     try {
       const payload = new FormData();
@@ -252,17 +213,24 @@ const CreateItem = () => {
       payload.append("lost_at", formData.lost_at || "");
       payload.append("found_at", formData.found_at || "");
       payload.append("date_lost_found", selectedDate);
-      payload.append("category_checklist", JSON.stringify(normalizedChecklist));
       if (formData.image_url) payload.append("image_url", formData.image_url);
-      if (imageFile) payload.append("image", imageFile);
+      imageFiles.forEach((file) => payload.append("images", file));
 
       await axiosClient.post("/items", payload, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      alert("Cập nhật tin thành công! Cảm ơn bạn vì hành động đẹp.");
-      navigate("/");
+      const message =
+        "Đăng bài thành công! Bài viết đã hiển thị ngay trên trang chủ.";
+      setSuccessMessage(message);
+      setTimeout(() => {
+        navigate("/", {
+          state: {
+            successMessage: message,
+          },
+        });
+      }, 400);
     } catch (error) {
       console.error(error);
       setError(
@@ -284,8 +252,8 @@ const CreateItem = () => {
         </div>
         <h1 className="page-title" style={{ marginBottom: "0.5rem" }}>
           {formData.post_type === "FOUND"
-            ? "Đăng tin nhặt được đồ"
-            : "Đăng tin tìm đồ thất lạc"}
+            ? "Đăng tin đồ nhặt được"
+            : "Đăng tin đồ thất lạc"}
         </h1>
         <p className="page-subtitle">
           {POST_TYPES.find((p) => p.value === formData.post_type)?.helper}
@@ -311,6 +279,26 @@ const CreateItem = () => {
               }}
             >
               <AlertCircle size={18} /> {error}
+            </div>
+          )}
+
+          {successMessage && (
+            <div
+              style={{
+                backgroundColor: "rgba(28,163,74,0.12)",
+                color: "var(--green)",
+                padding: "1rem",
+                borderRadius: "var(--r-md)",
+                marginBottom: "1.5rem",
+                fontSize: "0.9rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontWeight: 600,
+                border: "1px solid rgba(28,163,74,0.3)",
+              }}
+            >
+              <AlertCircle size={18} /> {successMessage}
             </div>
           )}
 
@@ -350,8 +338,8 @@ const CreateItem = () => {
               >
                 <Target size={16} color="var(--red)" />
                 {formData.post_type === "FOUND"
-                  ? "Tên vật phẩm nhặt được"
-                  : "Tên vật phẩm đang tìm"}{" "}
+                  ? "Tên đồ nhặt được"
+                  : "Tên đồ bị mất"}{" "}
                 <span style={{ color: "red" }}>*</span>
               </label>
               <input
@@ -360,8 +348,8 @@ const CreateItem = () => {
                 className="input-field"
                 placeholder={
                   formData.post_type === "FOUND"
-                    ? "vd: Chìa khóa xe AirBlade, ví da đen..."
-                    : "vd: Mất ví da màu đen, mất AirPods..."
+                    ? "vd: Ví da đen, chìa khóa xe AirBlade..."
+                    : "vd: Ví da đen, AirPods, thẻ sinh viên..."
                 }
                 value={formData.title}
                 onChange={handleChange}
@@ -419,7 +407,7 @@ const CreateItem = () => {
                 <label
                   style={{ display: "flex", alignItems: "center", gap: "6px" }}
                 >
-                  <Tag size={16} color="var(--amber)" /> Nơi lưu giữ vật phẩm
+                  <Tag size={16} color="var(--amber)" /> Nơi đang giữ đồ
                 </label>
                 <select
                   name="custody_type"
@@ -428,10 +416,8 @@ const CreateItem = () => {
                   onChange={handleChange}
                   style={{ cursor: "pointer", appearance: "menulist" }}
                 >
-                  <option value="FINDER">Tôi đang giữ vật phẩm</option>
-                  <option value="ADMIN">
-                    Tôi đã nộp vật phẩm cho khoa/admin
-                  </option>
+                  <option value="FINDER">Tôi đang giữ đồ</option>
+                  <option value="ADMIN">Tôi đã nộp cho khoa/admin</option>
                 </select>
                 <div
                   style={{
@@ -441,8 +427,8 @@ const CreateItem = () => {
                   }}
                 >
                   {formData.custody_type === "FINDER"
-                    ? "Người tìm sẽ nhắn tin trực tiếp với bạn."
-                    : "Người tìm sẽ nhắn tin để trao đổi trực tiếp với đầu mối đang giữ đồ."}
+                    ? "Người báo mất sẽ liên hệ trực tiếp với bạn."
+                    : "Người báo mất sẽ trao đổi với đầu mối đang giữ đồ."}
                 </div>
               </div>
             )}
@@ -454,7 +440,7 @@ const CreateItem = () => {
                 <MapPin size={16} color="var(--red)" />
                 {formData.post_type === "FOUND"
                   ? "Vị trí nhặt được"
-                  : "Vị trí làm mất/nhìn thấy lần cuối"}{" "}
+                  : "Nơi để mất/nhìn thấy lần cuối"}{" "}
                 <span style={{ color: "red" }}>*</span>
               </label>
               <input
@@ -513,8 +499,8 @@ const CreateItem = () => {
                 className="input-field"
                 placeholder={
                   formData.post_type === "FOUND"
-                    ? "Mô tả bối cảnh nhặt được, tình trạng vật phẩm, vật dụng đi kèm..."
-                    : "Mô tả lúc bị mất: hoàn cảnh, thời điểm, chi tiết có thể chứng minh sở hữu..."
+                    ? "Mô tả bối cảnh nhặt được, tình trạng đồ và vật dụng đi kèm..."
+                    : "Mô tả lúc để mất: hoàn cảnh, thời điểm, chi tiết giúp nhận diện..."
                 }
                 rows="4"
                 value={formData.description}
@@ -539,54 +525,18 @@ const CreateItem = () => {
               ></textarea>
             </div>
 
-            <div className="form-group">
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                <Target size={16} color="var(--amber)" /> Checklist xác minh
-                theo danh mục <span style={{ color: "red" }}>*</span>
-              </label>
-              <div className="create-item-checklist">
-                {checklistLabels.map((label, idx) => (
-                  <div key={`${label}-${idx}`}>
-                    <div
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "var(--muted)",
-                        marginBottom: "4px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {idx + 1}. {label}
-                    </div>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="Nhập thông tin nhận dạng tương ứng..."
-                      value={checklistAnswers[idx] || ""}
-                      onChange={(e) => {
-                        const next = [...checklistAnswers];
-                        next[idx] = e.target.value;
-                        setChecklistAnswers(next);
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="form-group" style={{ marginBottom: "1.2rem" }}>
               <label
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
-                <Phone size={16} color="var(--blue)" /> Cách liên hệ nhanh
+                <Phone size={16} color="var(--blue)" /> Cách liên hệ
                 <span style={{ color: "red" }}>*</span>
               </label>
               <input
                 type="text"
                 name="contact_info"
                 className="input-field"
-                placeholder="SĐT/Zalo/Email/Facebook để bên kia liên hệ"
+                placeholder="SĐT, Zalo, email hoặc Facebook để liên hệ"
                 value={formData.contact_info}
                 onChange={handleChange}
               />
@@ -597,14 +547,26 @@ const CreateItem = () => {
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <Camera size={16} color="var(--muted)" /> Ảnh đính kèm (PNG/JPG,
-                tối đa 5MB)
+                tối đa {ITEM_IMAGE_MAX_COUNT} ảnh, mỗi ảnh 5MB)
               </label>
               <input
                 type="file"
                 accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                 className="input-field"
+                multiple
                 onChange={handleImageFileChange}
               />
+              {imageFiles.length > 0 ? (
+                <div
+                  style={{
+                    marginTop: "6px",
+                    fontSize: "0.8rem",
+                    color: "var(--muted)",
+                  }}
+                >
+                  Đã chọn {imageFiles.length} ảnh.
+                </div>
+              ) : null}
             </div>
 
             <div className="form-group" style={{ marginBottom: "2rem" }}>
@@ -623,14 +585,11 @@ const CreateItem = () => {
                 onChange={(e) => {
                   handleChange(e);
                   if (e.target.value.trim()) {
-                    setImageFile(null);
-                    if (
-                      imagePreviewUrl &&
-                      imagePreviewUrl.startsWith("blob:")
-                    ) {
-                      URL.revokeObjectURL(imagePreviewUrl);
-                    }
-                    setImagePreviewUrl("");
+                    setImageFiles([]);
+                    imagePreviewUrls.forEach((url) => {
+                      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+                    });
+                    setImagePreviewUrls([]);
                   }
                 }}
               />
@@ -653,8 +612,8 @@ const CreateItem = () => {
                 {loading
                   ? "Đang gửi thông tin..."
                   : formData.post_type === "FOUND"
-                    ? "ĐĂNG TIN NHẶT ĐƯỢC ĐỒ"
-                    : "ĐĂNG TIN TÌM ĐỒ THẤT LẠC"}
+                    ? "ĐĂNG TIN ĐỒ NHẶT ĐƯỢC"
+                    : "ĐĂNG TIN ĐỒ THẤT LẠC"}
               </button>
             </div>
           </form>
@@ -718,12 +677,15 @@ const CreateItem = () => {
             <div
               className="ui-media"
               style={{
-                padding: imagePreviewUrl || formData.image_url ? "0" : "2rem",
+                padding:
+                  imagePreviewUrls.length > 0 || formData.image_url
+                    ? "0"
+                    : "2rem",
               }}
             >
-              {imagePreviewUrl || formData.image_url ? (
+              {imagePreviewUrls.length > 0 || formData.image_url ? (
                 <img
-                  src={imagePreviewUrl || formData.image_url}
+                  src={imagePreviewUrls[0] || formData.image_url}
                   alt="Preview"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   onError={(e) => {
@@ -742,6 +704,17 @@ const CreateItem = () => {
                 </div>
               )}
             </div>
+            {imagePreviewUrls.length > 1 ? (
+              <div
+                style={{
+                  marginTop: "8px",
+                  fontSize: "0.8rem",
+                  color: "var(--muted)",
+                }}
+              >
+                +{imagePreviewUrls.length - 1} ảnh khác sẽ được tải lên.
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

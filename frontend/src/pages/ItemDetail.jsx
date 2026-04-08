@@ -11,6 +11,7 @@ import {
   Clock,
 } from "lucide-react";
 import getApiErrorMessage from "../utils/get-api-error-message";
+import { getItemImageUrls, getPrimaryItemImage } from "../utils/item-images";
 
 const normalizeCategory = (value) => {
   const raw = (value || "").toString().trim();
@@ -34,6 +35,7 @@ const ItemDetail = () => {
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [claimDesc, setClaimDesc] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchItemDetail = async () => {
@@ -49,13 +51,17 @@ const ItemDetail = () => {
     fetchItemDetail();
   }, [id]);
 
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [item]);
+
   const handleClaimSubmit = async (e) => {
     e.preventDefault();
     if (!claimDesc || claimDesc.trim().length < 10) {
       alert(
         item?.post_type === "LOST"
-          ? "Vui lòng nhập mô tả cách bạn nhặt được vật phẩm (ít nhất 10 ký tự)."
-          : "Vui lòng nhập mô tả chứng minh món đồ này là của bạn (ít nhất 10 ký tự).",
+          ? "Vui lòng mô tả cách bạn đã nhặt được món đồ này (ít nhất 10 ký tự)."
+          : "Vui lòng mô tả chi tiết để xác minh đây là đồ của bạn (ít nhất 10 ký tự).",
       );
       return;
     }
@@ -66,19 +72,13 @@ const ItemDetail = () => {
         item_id: item.id,
         description: claimDesc.trim(),
       });
-      const conversationId = res.data?.conversation_id;
-      alert(
-        res.data?.message ||
-          "Yêu cầu đã được ghi nhận. Bạn có thể trao đổi tại mục Nhắn tin.",
-      );
+      alert(res.data?.message || "Yêu cầu đã được ghi nhận.");
       setShowClaimForm(false);
       setClaimDesc("");
-      if (conversationId) {
-        navigate(`/messages?conversation=${conversationId}`);
-      }
+      alert("Tính năng Nhắn tin đang phát triển (Coming Soon).");
     } catch (error) {
       console.error(error);
-      alert(getApiErrorMessage(error, "Lỗi khi gửi yêu cầu."));
+      alert(getApiErrorMessage(error, "Không thể gửi yêu cầu."));
     } finally {
       setSubmitting(false);
     }
@@ -106,14 +106,14 @@ const ItemDetail = () => {
         className="container page-shell"
         style={{ textAlign: "center", fontSize: "1.1rem" }}
       >
-        Không tìm thấy đồ vật này!
+        Không tìm thấy bài đăng này!
       </div>
     );
 
   const isFound = item.status === "FOUND";
   const isLostPost = item.post_type === "LOST";
   const isOwner = !!user && item.user_id === user.id;
-  const ownerLabel = isLostPost ? "Người mất" : "Người nhặt";
+  const ownerLabel = isLostPost ? "Người báo mất" : "Người nhặt được";
   const ownerName =
     item.posted_by?.full_name || item.posted_by?.username || "Chưa rõ";
   const ownerProfile = [item.posted_by?.khoa, item.posted_by?.nganh]
@@ -122,6 +122,9 @@ const ItemDetail = () => {
   const eventDateValue = isLostPost
     ? item.lost_at || item.date_lost_found
     : item.found_at || item.date_lost_found;
+  const itemImageUrls = getItemImageUrls(item);
+  const activeImageUrl =
+    itemImageUrls[activeImageIndex] || getPrimaryItemImage(item);
 
   return (
     <div className="container page-shell" style={{ paddingTop: "2rem" }}>
@@ -135,9 +138,11 @@ const ItemDetail = () => {
 
       <div className="detail-layout">
         <div className="detail-image-wrap">
-          {item.image_url ? (
-            <div style={{ width: "100%", height: "100%" }}>
-              <img src={item.image_url} alt={item.title} />
+          {activeImageUrl ? (
+            <div
+              style={{ width: "100%", height: "100%", position: "relative" }}
+            >
+              <img src={activeImageUrl} alt={item.title} />
               <div
                 style={{
                   position: "absolute",
@@ -146,6 +151,79 @@ const ItemDetail = () => {
                     "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)",
                 }}
               ></div>
+              {itemImageUrls.length > 1 ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "1rem",
+                    right: "1rem",
+                    zIndex: 2,
+                  }}
+                >
+                  <span
+                    className="status-pill status-pill-live"
+                    style={{
+                      background: "rgba(15, 23, 42, 0.82)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.18)",
+                    }}
+                  >
+                    Ảnh {activeImageIndex + 1}/{itemImageUrls.length}
+                  </span>
+                </div>
+              ) : null}
+              {itemImageUrls.length > 1 ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: "1rem",
+                    right: "1rem",
+                    bottom: "1rem",
+                    zIndex: 2,
+                    display: "flex",
+                    gap: "8px",
+                    overflowX: "auto",
+                    paddingBottom: "2px",
+                  }}
+                >
+                  {itemImageUrls.map((url, index) => (
+                    <button
+                      key={`${url}-${index}`}
+                      type="button"
+                      onClick={() => setActiveImageIndex(index)}
+                      aria-label={`Xem ảnh ${index + 1}`}
+                      style={{
+                        width: "64px",
+                        height: "64px",
+                        borderRadius: "12px",
+                        overflow: "hidden",
+                        border:
+                          index === activeImageIndex
+                            ? "2px solid #fff"
+                            : "2px solid rgba(255,255,255,0.35)",
+                        padding: 0,
+                        flexShrink: 0,
+                        background: "rgba(15, 23, 42, 0.35)",
+                        boxShadow:
+                          index === activeImageIndex
+                            ? "0 8px 20px rgba(0,0,0,0.35)"
+                            : "none",
+                      }}
+                    >
+                      <img
+                        src={url}
+                        alt={`${item.title} - ảnh ${index + 1}`}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div
@@ -228,7 +306,7 @@ const ItemDetail = () => {
               marginBottom: "1rem",
             }}
           >
-            {isLostPost ? "Bài đăng tìm đồ" : "Bài đăng nhặt được đồ"}
+            {isLostPost ? "Bài đăng đồ thất lạc" : "Bài đăng đồ nhặt được"}
           </div>
 
           <h2
@@ -274,10 +352,10 @@ const ItemDetail = () => {
               }}
             >
               {isLostPost
-                ? "Đây là bài đăng của người bị mất đồ. Nếu bạn đã nhặt được, hãy gửi yêu cầu trao đổi."
+                ? "Đây là bài đăng của người báo mất đồ. Nếu bạn đã nhặt được, hãy gửi yêu cầu để đối chiếu."
                 : item.custody_type === "ADMIN"
-                  ? "Vật phẩm đang được gửi tại khoa/admin: người tìm có thể mở trao đổi ngay để xác minh và hẹn nhận."
-                  : "Vật phẩm đang do người nhặt giữ: người tìm sẽ nhắn tin trực tiếp với người nhặt."}
+                  ? "Món đồ đang được gửi tại khoa/admin: người báo mất có thể mở yêu cầu để xác minh và hẹn nhận."
+                  : "Món đồ đang do người nhặt giữ: người báo mất sẽ liên hệ trực tiếp với người nhặt."}
             </div>
           </div>
 
@@ -430,7 +508,7 @@ const ItemDetail = () => {
                     marginBottom: "4px",
                   }}
                 >
-                  Vị trí tìm thấy
+                  {isLostPost ? "Nơi để mất" : "Vị trí nhặt được"}
                 </div>
                 <div
                   style={{
@@ -458,7 +536,7 @@ const ItemDetail = () => {
                     marginBottom: "4px",
                   }}
                 >
-                  {isLostPost ? "Thời điểm bị mất" : "Thời điểm nhặt được"}
+                  {isLostPost ? "Thời điểm để mất" : "Thời điểm nhặt được"}
                 </div>
                 <div
                   style={{
@@ -492,7 +570,7 @@ const ItemDetail = () => {
                   }}
                 >
                   {isLostPost
-                    ? "TÔI ĐÃ NHẶT ĐƯỢC VẬT PHẨM NÀY"
+                    ? "TÔI ĐÃ NHẶT ĐƯỢC MÓN NÀY"
                     : "ĐÂY CHÍNH LÀ ĐỒ CỦA TÔI"}
                 </button>
               ) : (
@@ -523,7 +601,7 @@ const ItemDetail = () => {
                     }}
                   >
                     {isLostPost
-                      ? "Hãy mô tả bằng chứng bạn đã nhặt được món đồ này (địa điểm, thời điểm, tình trạng...) để người đăng xác thực."
+                      ? "Hãy mô tả bằng chứng bạn đã nhặt được món đồ này (địa điểm, thời điểm, tình trạng...) để người báo mất xác minh."
                       : item.custody_type === "ADMIN"
                         ? "Hãy miêu tả chi tiết để bên giữ vật phẩm kiểm chứng khi trao đổi."
                         : "Hãy miêu tả chi tiết để người nhặt đối chiếu khi trao đổi."}

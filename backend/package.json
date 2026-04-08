@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node server.js",
     "seed": "node seed-chat-demo.js",
-    "demo:chat:reset": "node seed-chat-demo.js"
+    "demo:chat:reset": "node seed-chat-demo.js",
+    "backfill:item-images": "node scripts/backfill-item-images.js"
   },
   "keywords": [],
   "author": "",

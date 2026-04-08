@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { MapPin, Image as ImageIcon, Tag, Clock } from "lucide-react";
+import { getItemImageCount, getPrimaryItemImage } from "../utils/item-images";
 
 const normalizeCategory = (value) => {
   const raw = (value || "").toString().trim();
@@ -68,8 +69,10 @@ const TimeChip = ({ dateStr, createdAt }) => {
 };
 
 const ItemCard = ({ item }) => {
+  const primaryImageUrl = getPrimaryItemImage(item);
+  const imageCount = getItemImageCount(item);
   const isLostPost = item.post_type === "LOST";
-  const ownerLabel = isLostPost ? "Người mất" : "Người nhặt";
+  const ownerLabel = isLostPost ? "Người báo mất" : "Người nhặt được";
   const ownerName =
     item.posted_by?.full_name || item.posted_by?.username || "Chưa rõ";
   const ownerProfile = [item.posted_by?.khoa, item.posted_by?.nganh]
@@ -88,8 +91,20 @@ const ItemCard = ({ item }) => {
       <div className="item-card">
         {/* Ảnh */}
         <div className="item-card-img">
-          {item.image_url ? (
-            <img src={item.image_url} alt={item.title} />
+          {primaryImageUrl ? (
+            <div
+              style={{ width: "100%", height: "100%", position: "relative" }}
+            >
+              <img src={primaryImageUrl} alt={item.title} />
+              {imageCount > 1 ? (
+                <span
+                  className="status-pill status-pill-live"
+                  style={{ position: "absolute", top: "10px", right: "10px" }}
+                >
+                  {imageCount} ảnh
+                </span>
+              ) : null}
+            </div>
           ) : (
             <div
               style={{
@@ -114,7 +129,7 @@ const ItemCard = ({ item }) => {
             {isFound && !isUrgent && (
               <span className="status-pill status-pill-live">
                 <span className="status-pill-live-dot"></span>
-                {isLostPost ? "Đang tìm giúp" : "Chờ nhận lại"}
+                {isLostPost ? "Đang hỗ trợ tìm" : "Chờ nhận lại"}
               </span>
             )}
             {isReturned && (
@@ -136,7 +151,7 @@ const ItemCard = ({ item }) => {
                   isLostPost ? "lost" : "found"
                 }`}
               >
-                {isLostPost ? "Bài tìm đồ" : "Bài nhặt đồ"}
+                {isLostPost ? "Bài báo mất" : "Bài nhặt được"}
               </span>
             </div>
             <TimeChip
@@ -175,17 +190,9 @@ const ItemCard = ({ item }) => {
           </div>
 
           <div className="item-card-hover-panel" aria-hidden="true">
-            <div className="item-card-hover-title">{item.title}</div>
             {item.description ? (
               <div className="item-card-hover-desc">{item.description}</div>
             ) : null}
-            <div className="item-card-hover-line">
-              <MapPin size={13} /> {item.location}
-            </div>
-            <div className="item-card-hover-line">
-              <strong>{ownerLabel}:</strong> {ownerName}
-              {ownerProfile ? ` · ${ownerProfile}` : ""}
-            </div>
           </div>
         </div>
       </div>

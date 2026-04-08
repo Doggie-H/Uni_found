@@ -605,13 +605,15 @@ h6 {
 }
 
 .item-card-hover-desc {
-  font-size: 0.83rem;
+  font-size: 0.9rem;
   color: var(--prose);
-  line-height: 1.4;
-  margin-bottom: 8px;
-  max-height: 110px;
-  overflow: auto;
-  padding-right: 4px;
+  line-height: 1.45;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .item-card-hover-desc::-webkit-scrollbar {

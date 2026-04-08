@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
 
+const ITEM_IMAGE_MAX_COUNT = 5;
+
 const UPLOAD_ROOT = path.join(__dirname, "..", "uploads", "items");
 
 if (!fs.existsSync(UPLOAD_ROOT)) {
@@ -40,4 +42,5 @@ const uploadItemImage = multer({
 
 module.exports = {
   uploadItemImage,
+  ITEM_IMAGE_MAX_COUNT,
 };
