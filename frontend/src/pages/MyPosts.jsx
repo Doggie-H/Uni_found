@@ -88,6 +88,7 @@ const MyPosts = () => {
 
   const handleToggleStatus = async (item) => {
     const nextStatus = item.status === "RETURNED" ? "FOUND" : "RETURNED";
+    const isLostPost = item.post_type === "LOST";
     try {
       const res = await axiosClient.put(`/items/${item.id}/my-status`, {
         status: nextStatus,
@@ -95,10 +96,16 @@ const MyPosts = () => {
       if (nextStatus === "RETURNED") {
         setSuccessNotice(
           res.data?.message ||
-            "Đã xác nhận hoàn trả. Thông báo đã được gửi về admin để theo dõi.",
+            (isLostPost
+              ? "Đã đánh dấu bạn đã tìm được vật phẩm. Thông báo đã gửi về admin để theo dõi."
+              : "Đã đánh dấu đã trả lại người mất. Thông báo đã gửi về admin để theo dõi."),
         );
       } else {
-        setSuccessNotice("Bài đăng đã được mở lại trạng thái đang mở.");
+        setSuccessNotice(
+          isLostPost
+            ? "Bài tìm đồ đã được mở lại trạng thái đang tìm."
+            : "Bài nhặt được đã được mở lại trạng thái đang chờ nhận.",
+        );
       }
       await fetchMyPosts();
     } catch (err) {
@@ -316,7 +323,11 @@ const MyPosts = () => {
                     onClick={() => handleToggleStatus(item)}
                   >
                     <CheckCircle2 size={14} />
-                    {item.status === "RETURNED" ? "Mở lại" : "Hoàn tất"}
+                    {item.status === "RETURNED"
+                      ? "Mở lại"
+                      : item.post_type === "LOST"
+                        ? "Đã tìm được vật phẩm"
+                        : "Đã trả lại người mất"}
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"

@@ -124,6 +124,11 @@ const ItemDetail = () => {
   const isFound = item.status === "FOUND";
   const isLostPost = item.post_type === "LOST";
   const isOwner = !!user && item.user_id === user.id;
+  const claimButtonLabel = isOwner
+    ? "ĐÂY LÀ BÀI ĐĂNG CỦA BẠN"
+    : isLostPost
+      ? "TÔI LÀ NGƯỜI NHẶT ĐƯỢC"
+      : "TÔI LÀ NGƯỜI BỊ MẤT";
   const ownerLabel = isLostPost ? "Người báo mất" : "Người nhặt được";
   const ownerName =
     item.posted_by?.full_name || item.posted_by?.username || "Chưa rõ";
@@ -557,13 +562,16 @@ const ItemDetail = () => {
               !showClaimForm ? (
                 <button
                   className="btn btn-danger btn-lg"
-                  style={{ width: "100%" }}
+                  style={{
+                    width: "100%",
+                    opacity: isOwner ? 0.85 : 1,
+                    cursor: isOwner ? "default" : "pointer",
+                  }}
+                  disabled={isOwner}
                   onClick={() => {
                     if (!user) {
                       alert("Vui lòng đăng nhập để Claim món đồ này!");
                       navigate("/login");
-                    } else if (isOwner) {
-                      alert("Bạn không thể claim món đồ do chính mình đăng.");
                     } else {
                       setActionNotice(
                         isLostPost
@@ -574,9 +582,7 @@ const ItemDetail = () => {
                     }
                   }}
                 >
-                  {isLostPost
-                    ? "TÔI LÀ NGƯỜI NHẶT ĐƯỢC"
-                    : "TÔI LÀ NGƯỜI BỊ MẤT"}
+                  {claimButtonLabel}
                 </button>
               ) : (
                 <form

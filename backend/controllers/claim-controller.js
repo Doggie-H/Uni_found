@@ -329,6 +329,31 @@ exports.confirmReturn = (req, res) => {
         .lean();
 
       let adminNotified = false;
+      let counterpartNotified = false;
+      const counterpartUserId = isSeeker ? item.user_id : claim.user_id;
+      const actorLabel = isSeeker ? "Người nhận" : "Người giữ";
+
+      try {
+        const counterpartNotification = await createNotificationForUser({
+          userId: counterpartUserId,
+          type: "RETURN_CONFIRMED",
+          title: "Đối phương đã xác nhận nhận-trả",
+          body:
+            claim.seeker_confirmed && claim.holder_confirmed
+              ? `${item.title || "Vật phẩm"}: ${actorLabel} đã xác nhận. Yêu cầu nhận-trả đã hoàn tất 2 chiều.`
+              : `${item.title || "Vật phẩm"}: ${actorLabel} đã xác nhận. Vui lòng xác nhận phía bạn để hoàn tất.`,
+          meta: {
+            item_id: item._id.toString(),
+            claim_id: claim._id.toString(),
+            actor_user_id: req.user.id,
+            actor_role: isSeeker ? "SEEKER" : "HOLDER",
+          },
+        });
+        counterpartNotified = Boolean(counterpartNotification);
+      } catch (notifyError) {
+        console.warn("Counterpart notification failed:", notifyError.message);
+      }
+
       if (claim.seeker_confirmed && claim.holder_confirmed) {
         claim.status = "RETURN_CONFIRMED";
         claim.returned_confirmed_at = new Date();
@@ -387,6 +412,7 @@ exports.confirmReturn = (req, res) => {
           returned_confirmed_at: claim.returned_confirmed_at,
         },
         admin_notified: adminNotified,
+        counterpart_notified: counterpartNotified,
       });
     })
     .catch((err) => res.status(500).json({ error: err.message }));
