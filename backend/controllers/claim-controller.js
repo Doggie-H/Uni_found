@@ -144,22 +144,36 @@ exports.createClaim = (req, res) => {
 
       let notificationSent = false;
       try {
-        const notification = await createNotificationForUser({
-          userId: item.user_id,
-          type: isLostPost ? "FOUND_MATCH" : "CLAIM_REQUEST",
-          title: isLostPost
-            ? "Có người nhặt được vật phẩm bạn đang tìm"
-            : "Có người yêu cầu nhận lại vật phẩm",
-          body: isLostPost
-            ? `${item.title || "Vật phẩm"}: đã có người báo nhặt được và gửi thông tin xác minh.`
-            : `${item.title || "Vật phẩm"}: có người gửi yêu cầu nhận lại kèm bằng chứng xác minh.`,
-          meta: {
-            item_id: item._id.toString(),
-            claim_id: newClaim._id.toString(),
-            actor_user_id: req.user.id,
-          },
-        });
-        notificationSent = Boolean(notification);
+        if (item.custody_type === "ADMIN" && !isLostPost) {
+          const notifiedCount = await notifyAdmins({
+            type: "CLAIM_REQUEST",
+            title: "Có người yêu cầu nhận lại vật phẩm tại văn phòng khoa",
+            body: `${item.title || "Vật phẩm"}: có người gửi yêu cầu nhận lại và cần admin xác minh bàn giao.`,
+            meta: {
+              item_id: item._id.toString(),
+              claim_id: newClaim._id.toString(),
+              actor_user_id: req.user.id,
+            },
+          });
+          notificationSent = notifiedCount > 0;
+        } else {
+          const notification = await createNotificationForUser({
+            userId: item.user_id,
+            type: isLostPost ? "FOUND_MATCH" : "CLAIM_REQUEST",
+            title: isLostPost
+              ? "Có người nhặt được vật phẩm bạn đang tìm"
+              : "Có người yêu cầu nhận lại vật phẩm",
+            body: isLostPost
+              ? `${item.title || "Vật phẩm"}: đã có người báo nhặt được và gửi thông tin xác minh.`
+              : `${item.title || "Vật phẩm"}: có người gửi yêu cầu nhận lại kèm bằng chứng xác minh.`,
+            meta: {
+              item_id: item._id.toString(),
+              claim_id: newClaim._id.toString(),
+              actor_user_id: req.user.id,
+            },
+          });
+          notificationSent = Boolean(notification);
+        }
       } catch (notifyError) {
         console.warn("Notification create failed:", notifyError.message);
       }
@@ -170,7 +184,9 @@ exports.createClaim = (req, res) => {
             ? "Da gui thong bao co nguoi nhat duoc vat pham ban dang tim."
             : "Da ghi nhan thong tin nguoi nhat duoc vat pham. Thong bao se duoc dong bo tiep."
           : notificationSent
-            ? "Da gui yeu cau nhan lai vat pham kem bang chung."
+            ? item.custody_type === "ADMIN"
+              ? "Da gui yeu cau nhan lai vat pham. Admin da nhan thong bao de ho tro ban giao."
+              : "Da gui yeu cau nhan lai vat pham kem bang chung."
             : "Da ghi nhan yeu cau nhan lai vat pham. Thong bao se duoc dong bo tiep.",
         claim_id: newClaim._id.toString(),
         conversation_id: conversation?._id?.toString?.() || null,
