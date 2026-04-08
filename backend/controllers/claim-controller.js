@@ -122,19 +122,27 @@ exports.createClaim = (req, res) => {
         participants: [req.user.id, item.user_id.toString()],
       });
 
-      await sendSystemMessage(
-        conversation._id,
-        "He thong da tim thay nguoi tim va nguoi nhat. Hai ben vui long trao doi thong tin de xac minh vat pham.",
-      );
+      const isLostPost = item.post_type === "LOST";
+      const systemNotice = isLostPost
+        ? "Thong bao: Co nguoi nhat duoc vat pham ban dang tim va da gui thong tin xac minh."
+        : "Thong bao: Co nguoi yeu cau nhan lai vat pham kem bang chung xac minh.";
+
+      const initialUserMessage = isLostPost
+        ? "Xin chao, minh da nhat duoc vat pham ban dang tim. Minh gui thong tin de doi chieu va ban giao."
+        : "Xin chao, minh dang gui yeu cau nhan lai vat pham kem bang chung de doi chieu.";
+
+      await sendSystemMessage(conversation._id, systemNotice);
 
       await Message.create({
         conversation_id: conversation._id,
         sender_id: req.user.id,
-        body: "Xin chao, minh nghi day la vat pham cua minh. Minh xin lien he de xac nhan.",
+        body: initialUserMessage,
       });
 
       return res.status(201).json({
-        message: "Da mo kenh trao doi voi nguoi nhat duoc vat pham.",
+        message: isLostPost
+          ? "Da gui thong bao co nguoi nhat duoc vat pham ban dang tim."
+          : "Da gui yeu cau nhan lai vat pham kem bang chung.",
         claim_id: newClaim._id.toString(),
         conversation_id: conversation?._id?.toString?.() || null,
       });
@@ -260,15 +268,6 @@ exports.confirmReturn = (req, res) => {
         .select("_id")
         .lean();
 
-      if (conversation?._id) {
-        await sendSystemMessage(
-          conversation._id,
-          isSeeker
-            ? "Nguoi tim da xac nhan da nhan vat pham. Dang cho ben giu vat pham xac nhan."
-            : "Ben giu vat pham da xac nhan ban giao. Dang cho nguoi tim xac nhan.",
-        );
-      }
-
       if (claim.seeker_confirmed && claim.holder_confirmed) {
         claim.status = "RETURN_CONFIRMED";
         claim.returned_confirmed_at = new Date();
@@ -290,7 +289,7 @@ exports.confirmReturn = (req, res) => {
         if (conversation?._id) {
           await sendSystemMessage(
             conversation._id,
-            "He thong da ghi nhan xac nhan 2 chieu. Vat pham da duoc danh dau HOAN TRA THANH CONG.",
+            "Thong bao admin: Vat pham da duoc hoan tra thanh cong.",
           );
         }
       }
@@ -300,8 +299,8 @@ exports.confirmReturn = (req, res) => {
       return res.json({
         message:
           claim.status === "RETURN_CONFIRMED"
-            ? "Da hoan tat xac nhan 2 chieu. Vat pham da duoc danh dau da tra."
-            : "Da ghi nhan xac nhan cua ban. Cho ben con lai xac nhan.",
+            ? "Da xac nhan hoan tra. Admin da nhan thong bao vat pham da duoc hoan tra."
+            : "Da ghi nhan xac nhan cua ban.",
         claim: {
           id: claim._id.toString(),
           status: claim.status,

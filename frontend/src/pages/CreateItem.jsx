@@ -42,6 +42,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const PHONE_RE = /(?:\+84|0)(?:3|5|7|8|9)\d{8}\b/;
 const URL_RE = /^https?:\/\//i;
 const ITEM_IMAGE_MAX_COUNT = 5;
+const DESCRIPTION_MIN_LENGTH = 20;
+const DESCRIPTION_MAX_LENGTH = 1500;
+const FEATURES_MIN_LENGTH = 10;
+const FEATURES_MAX_LENGTH = 1000;
 
 const CreateItem = () => {
   const { user } = useContext(AuthContext);
@@ -116,14 +120,6 @@ const CreateItem = () => {
   const handleImageFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) {
-      setImageFiles([]);
-      setImagePreviewUrls([]);
-      return;
-    }
-
-    if (files.length > ITEM_IMAGE_MAX_COUNT) {
-      setError(`Chỉ được chọn tối đa ${ITEM_IMAGE_MAX_COUNT} ảnh.`);
-      e.target.value = "";
       return;
     }
 
@@ -142,15 +138,32 @@ const CreateItem = () => {
       }
     }
 
-    setError("");
+    const uniqueMap = new Map();
+    [...imageFiles, ...files].forEach((file) => {
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      uniqueMap.set(key, file);
+    });
+
+    const mergedFiles = Array.from(uniqueMap.values()).slice(
+      0,
+      ITEM_IMAGE_MAX_COUNT,
+    );
+
+    if (mergedFiles.length < imageFiles.length + files.length) {
+      setError(`Chỉ được chọn tối đa ${ITEM_IMAGE_MAX_COUNT} ảnh.`);
+    } else {
+      setError("");
+    }
+
     imagePreviewUrls.forEach((url) => {
       if (url.startsWith("blob:")) URL.revokeObjectURL(url);
     });
 
-    const previews = files.map((file) => URL.createObjectURL(file));
-    setImageFiles(files);
+    const previews = mergedFiles.map((file) => URL.createObjectURL(file));
+    setImageFiles(mergedFiles);
     setImagePreviewUrls(previews);
     setFormData((prev) => ({ ...prev, image_url: "" }));
+    e.target.value = "";
   };
 
   const handleSubmit = async (e) => {
@@ -166,13 +179,27 @@ const CreateItem = () => {
       return;
     }
 
-    if ((formData.description || "").trim().length < 20) {
-      setError("Mô tả chi tiết cần ít nhất 20 ký tự.");
+    const descriptionLength = (formData.description || "").trim().length;
+    if (descriptionLength < DESCRIPTION_MIN_LENGTH) {
+      setError(`Mô tả chi tiết cần ít nhất ${DESCRIPTION_MIN_LENGTH} ký tự.`);
+      return;
+    }
+    if (descriptionLength > DESCRIPTION_MAX_LENGTH) {
+      setError(
+        `Mô tả chi tiết tối đa ${DESCRIPTION_MAX_LENGTH} ký tự. Vui lòng rút gọn nội dung.`,
+      );
       return;
     }
 
-    if ((formData.distinctive_features || "").trim().length < 10) {
-      setError("Đặc điểm nhận dạng cần ít nhất 10 ký tự.");
+    const featuresLength = (formData.distinctive_features || "").trim().length;
+    if (featuresLength < FEATURES_MIN_LENGTH) {
+      setError(`Đặc điểm nhận dạng cần ít nhất ${FEATURES_MIN_LENGTH} ký tự.`);
+      return;
+    }
+    if (featuresLength > FEATURES_MAX_LENGTH) {
+      setError(
+        `Đặc điểm nhận dạng tối đa ${FEATURES_MAX_LENGTH} ký tự. Vui lòng rút gọn nội dung.`,
+      );
       return;
     }
 
@@ -492,7 +519,6 @@ const CreateItem = () => {
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <AlignLeft size={16} color="var(--muted)" /> Mô tả chi tiết
-                <span style={{ color: "red" }}>*</span>
               </label>
               <textarea
                 name="description"
@@ -503,9 +529,21 @@ const CreateItem = () => {
                     : "Mô tả lúc để mất: hoàn cảnh, thời điểm, chi tiết giúp nhận diện..."
                 }
                 rows="4"
+                maxLength={DESCRIPTION_MAX_LENGTH}
                 value={formData.description}
                 onChange={handleChange}
               ></textarea>
+              <div
+                style={{
+                  marginTop: "6px",
+                  fontSize: "0.8rem",
+                  color: "var(--muted)",
+                }}
+              >
+                Từ {DESCRIPTION_MIN_LENGTH} đến {DESCRIPTION_MAX_LENGTH} ký tự.
+                Đã nhập {(formData.description || "").length}/
+                {DESCRIPTION_MAX_LENGTH}.
+              </div>
             </div>
 
             <div className="form-group">
@@ -513,16 +551,28 @@ const CreateItem = () => {
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <Tag size={16} color="var(--amber)" /> Đặc điểm nhận dạng nổi
-                bật <span style={{ color: "red" }}>*</span>
+                bật
               </label>
               <textarea
                 name="distinctive_features"
                 className="input-field"
                 placeholder="vd: trầy góc phải, có dán sticker hình mèo, trong ví có thẻ ATM màu xanh..."
                 rows="3"
+                maxLength={FEATURES_MAX_LENGTH}
                 value={formData.distinctive_features}
                 onChange={handleChange}
               ></textarea>
+              <div
+                style={{
+                  marginTop: "6px",
+                  fontSize: "0.8rem",
+                  color: "var(--muted)",
+                }}
+              >
+                Từ {FEATURES_MIN_LENGTH} đến {FEATURES_MAX_LENGTH} ký tự. Đã
+                nhập {(formData.distinctive_features || "").length}/
+                {FEATURES_MAX_LENGTH}.
+              </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: "1.2rem" }}>
@@ -551,6 +601,7 @@ const CreateItem = () => {
               </label>
               <input
                 type="file"
+                name="images"
                 accept=".png,.jpg,.jpeg,image/png,image/jpeg"
                 className="input-field"
                 multiple

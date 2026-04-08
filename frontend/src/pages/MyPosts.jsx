@@ -49,6 +49,7 @@ const MyPosts = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successNotice, setSuccessNotice] = useState("");
   const [postTypeFilter, setPostTypeFilter] = useState("all");
   const [approvalFilter, setApprovalFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -88,9 +89,17 @@ const MyPosts = () => {
   const handleToggleStatus = async (item) => {
     const nextStatus = item.status === "RETURNED" ? "FOUND" : "RETURNED";
     try {
-      await axiosClient.put(`/items/${item.id}/my-status`, {
+      const res = await axiosClient.put(`/items/${item.id}/my-status`, {
         status: nextStatus,
       });
+      if (nextStatus === "RETURNED") {
+        setSuccessNotice(
+          res.data?.message ||
+            "Đã xác nhận hoàn trả. Thông báo đã được gửi về admin để theo dõi.",
+        );
+      } else {
+        setSuccessNotice("Bài đăng đã được mở lại trạng thái đang mở.");
+      }
       await fetchMyPosts();
     } catch (err) {
       alert(getApiErrorMessage(err, "Không thể cập nhật trạng thái bài đăng."));
@@ -219,6 +228,20 @@ const MyPosts = () => {
           }}
         >
           {error}
+        </div>
+      ) : null}
+
+      {successNotice ? (
+        <div
+          className="ui-panel"
+          style={{
+            border: "1px solid rgba(28,163,74,0.3)",
+            color: "var(--green)",
+            marginBottom: "1rem",
+            fontWeight: 600,
+          }}
+        >
+          {successNotice}
         </div>
       ) : null}
 

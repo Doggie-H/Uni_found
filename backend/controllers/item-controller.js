@@ -18,6 +18,53 @@ const PHONE_RE = /(?:\+84|0)(?:3|5|7|8|9)\d{8}\b/;
 const URL_RE = /^https?:\/\//i;
 const ITEM_IMAGE_MAX_COUNT = 5;
 
+const canonicalizeCategory = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "Khác";
+
+  const normalized = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+  if (
+    normalized.includes("vi") ||
+    normalized.includes("giay to") ||
+    normalized.includes("giay to tuy than")
+  ) {
+    return "Ví/Giấy tờ";
+  }
+
+  if (
+    normalized.includes("dien tu") ||
+    normalized.includes("do dien tu") ||
+    normalized.includes("thiet bi")
+  ) {
+    return "Đồ Điện Tử";
+  }
+
+  if (normalized.includes("chia khoa") || normalized.includes("chia khoa")) {
+    return "Chìa Khoá";
+  }
+
+  if (
+    normalized.includes("can cuoc") ||
+    normalized.includes("the") ||
+    normalized.includes("cccd") ||
+    normalized.includes("cmnd")
+  ) {
+    return "Căn cước/Thẻ";
+  }
+
+  if (normalized === "khac" || normalized === "other") {
+    return "Khác";
+  }
+
+  return raw;
+};
+
 const isValidContactInfo = (value) => {
   if (typeof value !== "string") return false;
   const trimmed = value.trim();
@@ -73,7 +120,7 @@ const toClientItem = (item) => ({
   id: item._id.toString(),
   title: item.title,
   post_type: item.post_type || "FOUND",
-  category: item.category,
+  category: canonicalizeCategory(item.category),
   description: item.description,
   brand: item.brand || "",
   color: item.color || "",
@@ -127,7 +174,7 @@ exports.getItems = (req, res) => {
     query.location = { $regex: escapeRegex(location.trim()), $options: "i" };
   }
   if (typeof category === "string" && category.trim()) {
-    query.category = category.trim();
+    query.category = canonicalizeCategory(category);
   }
   if (typeof status === "string" && ["FOUND", "RETURNED"].includes(status)) {
     query.status = status;
@@ -266,6 +313,7 @@ exports.createItem = (req, res) => {
 
   const uploadedFiles = [
     ...(Array.isArray(req.files?.images) ? req.files.images : []),
+    ...(Array.isArray(req.files?.["images[]"]) ? req.files["images[]"] : []),
     ...(Array.isArray(req.files?.image) ? req.files.image : []),
   ].slice(0, ITEM_IMAGE_MAX_COUNT);
 
@@ -334,7 +382,7 @@ exports.createItem = (req, res) => {
   Item.create({
     title: normalizedTitle,
     post_type: normalizedPostType,
-    category: category || "Khac",
+    category: canonicalizeCategory(category),
     description: normalizedDescription,
     brand: typeof brand === "string" ? brand.trim().slice(0, 120) : "",
     color: typeof color === "string" ? color.trim().slice(0, 80) : "",
@@ -487,16 +535,31 @@ exports.updateMyItemStatus = (req, res) => {
       item.returned_at = status === "RETURNED" ? new Date() : null;
       await item.save();
 
+      let affectedClaims = 0;
       if (status === "RETURNED") {
-        await Claim.updateMany(
+        const now = new Date();
+        const updateResult = await Claim.updateMany(
           { item_id: item._id, status: "CONNECTED" },
-          { $set: { status: "RETURN_CONFIRMED" } },
+          {
+            $set: {
+              status: "RETURN_CONFIRMED",
+              returned_confirmed_at: now,
+              seeker_confirmed: true,
+              holder_confirmed: true,
+            },
+          },
         );
+        affectedClaims = updateResult.modifiedCount || 0;
       }
 
       return res.json({
-        message: "Da cap nhat trang thai",
+        message:
+          status === "RETURNED"
+            ? "Da xac nhan hoan tra va gui thong bao den admin."
+            : "Da cap nhat trang thai",
         item_id: item._id.toString(),
+        admin_notified: status === "RETURNED",
+        affected_claims: affectedClaims,
       });
     })
     .catch((err) => res.status(500).json({ error: err.message }));

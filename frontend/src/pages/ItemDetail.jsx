@@ -36,6 +36,7 @@ const ItemDetail = () => {
   const [claimDesc, setClaimDesc] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [actionNotice, setActionNotice] = useState("");
 
   useEffect(() => {
     const fetchItemDetail = async () => {
@@ -73,6 +74,11 @@ const ItemDetail = () => {
         description: claimDesc.trim(),
       });
       alert(res.data?.message || "Yêu cầu đã được ghi nhận.");
+      setActionNotice(
+        item?.post_type === "LOST"
+          ? "Đã gửi thông báo: có người nhặt được vật phẩm bạn đang tìm."
+          : "Đã gửi yêu cầu nhận lại vật phẩm kèm bằng chứng.",
+      );
       setShowClaimForm(false);
       setClaimDesc("");
       alert("Tính năng Nhắn tin đang phát triển (Coming Soon).");
@@ -565,13 +571,18 @@ const ItemDetail = () => {
                     } else if (isOwner) {
                       alert("Bạn không thể claim món đồ do chính mình đăng.");
                     } else {
+                      setActionNotice(
+                        isLostPost
+                          ? "Bạn sắp gửi thông báo có người nhặt được vật phẩm đang tìm."
+                          : "Bạn sắp gửi yêu cầu nhận lại vật phẩm kèm bằng chứng.",
+                      );
                       setShowClaimForm(true);
                     }
                   }}
                 >
                   {isLostPost
-                    ? "TÔI ĐÃ NHẶT ĐƯỢC MÓN NÀY"
-                    : "ĐÂY CHÍNH LÀ ĐỒ CỦA TÔI"}
+                    ? "TÔI LÀ NGƯỜI NHẶT ĐƯỢC"
+                    : "TÔI LÀ NGƯỜI BỊ MẤT"}
                 </button>
               ) : (
                 <form
@@ -606,6 +617,22 @@ const ItemDetail = () => {
                         ? "Hãy miêu tả chi tiết để bên giữ vật phẩm kiểm chứng khi trao đổi."
                         : "Hãy miêu tả chi tiết để người nhặt đối chiếu khi trao đổi."}
                   </p>
+                  {actionNotice ? (
+                    <div
+                      style={{
+                        marginBottom: "1rem",
+                        background: "var(--blue-bg)",
+                        color: "var(--blue)",
+                        border: "1px solid rgba(59,130,246,0.3)",
+                        borderRadius: "10px",
+                        padding: "10px 12px",
+                        fontSize: "0.86rem",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {actionNotice}
+                    </div>
+                  ) : null}
                   <textarea
                     className="input-field"
                     rows="4"
@@ -618,7 +645,10 @@ const ItemDetail = () => {
                     <button
                       type="button"
                       className="btn btn-ghost"
-                      onClick={() => setShowClaimForm(false)}
+                      onClick={() => {
+                        setShowClaimForm(false);
+                        setActionNotice("");
+                      }}
                       style={{ flex: "1" }}
                     >
                       Hủy

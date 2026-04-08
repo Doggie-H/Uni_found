@@ -13,6 +13,7 @@ router.post(
   authenticate,
   uploadItemImage.fields([
     { name: "images", maxCount: ITEM_IMAGE_MAX_COUNT },
+    { name: "images[]", maxCount: ITEM_IMAGE_MAX_COUNT },
     { name: "image", maxCount: 1 },
   ]),
   itemController.createItem,

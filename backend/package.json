@@ -7,7 +7,9 @@
     "dev": "node server.js",
     "seed": "node seed-chat-demo.js",
     "demo:chat:reset": "node seed-chat-demo.js",
-    "backfill:item-images": "node scripts/backfill-item-images.js"
+    "backfill:item-images": "node scripts/backfill-item-images.js",
+    "approve:pending-items": "node scripts/approve-pending-items.js",
+    "normalize:legacy-items": "node scripts/normalize-legacy-item-data.js"
   },
   "keywords": [],
   "author": "",
