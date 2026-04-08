@@ -11,7 +11,6 @@ import {
   CreditCard,
   Box,
   Compass,
-  ArrowRight,
 } from "lucide-react";
 import EmptyState from "../components/ui/EmptyState";
 import getApiErrorMessage from "../utils/get-api-error-message";
@@ -611,21 +610,6 @@ const Home = () => {
                   ))}
                 </select>
               </div>
-
-              {user && (
-                <Link
-                  to="/create-item"
-                  className="btn btn-ghost btn-sm"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    textDecoration: "none",
-                  }}
-                >
-                  Báo nhặt đồ <ArrowRight size={14} />
-                </Link>
-              )}
             </div>
           </div>
 

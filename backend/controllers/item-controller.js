@@ -161,7 +161,6 @@ const toClientItem = (item, req) => ({
   description: item.description,
   brand: item.brand || "",
   color: item.color || "",
-  distinctive_features: item.distinctive_features || "",
   contact_info: item.contact_info || "",
   lost_at: item.lost_at || null,
   found_at: item.found_at || null,
@@ -294,7 +293,6 @@ exports.createItem = (req, res) => {
     description,
     brand,
     color,
-    distinctive_features,
     contact_info,
     lost_at,
     found_at,
@@ -311,37 +309,24 @@ exports.createItem = (req, res) => {
 
   const normalizedTitle = String(title).trim();
   const normalizedLocation = String(location).trim();
-  if (normalizedTitle.length < 3 || normalizedTitle.length > 120) {
-    return res.status(400).json({ error: "Tieu de phai tu 3 den 120 ky tu." });
+  if (!normalizedTitle || !normalizedLocation) {
+    return res.status(400).json({ error: "Thieu thong tin bat buoc." });
   }
-  if (normalizedLocation.length < 3 || normalizedLocation.length > 200) {
-    return res.status(400).json({ error: "Vi tri phai tu 3 den 200 ky tu." });
+  if (normalizedTitle.length > 120) {
+    return res.status(400).json({ error: "Tieu de phai khong qua 120 ky tu." });
+  }
+  if (normalizedLocation.length > 200) {
+    return res.status(400).json({ error: "Vi tri phai khong qua 200 ky tu." });
   }
 
   const normalizedDescription =
     typeof description === "string" ? description.trim() : "";
-  if (
-    normalizedDescription.length < 20 ||
-    normalizedDescription.length > 1500
-  ) {
-    return res.status(400).json({
-      error: "Mo ta chi tiet phai tu 20 den 1500 ky tu.",
-    });
-  }
-
-  const normalizedFeatures =
-    typeof distinctive_features === "string" ? distinctive_features.trim() : "";
-  if (normalizedFeatures.length < 10 || normalizedFeatures.length > 1000) {
-    return res.status(400).json({
-      error: "Dac diem nhan dang phai tu 10 den 1000 ky tu.",
-    });
-  }
 
   const normalizedContact =
     typeof contact_info === "string" ? contact_info.trim() : "";
-  if (normalizedContact.length < 8 || normalizedContact.length > 200) {
+  if (normalizedContact.length > 200) {
     return res.status(400).json({
-      error: "Thong tin lien he phai tu 8 den 200 ky tu.",
+      error: "Thong tin lien he phai khong qua 200 ky tu.",
     });
   }
   if (!isValidContactInfo(normalizedContact)) {
@@ -428,7 +413,6 @@ exports.createItem = (req, res) => {
     description: normalizedDescription,
     brand: typeof brand === "string" ? brand.trim().slice(0, 120) : "",
     color: typeof color === "string" ? color.trim().slice(0, 80) : "",
-    distinctive_features: normalizedFeatures,
     contact_info: normalizedContact,
     lost_at: normalizedPostType === "LOST" ? dateValue : null,
     found_at: normalizedPostType === "FOUND" ? dateValue : null,

@@ -651,20 +651,6 @@ h6 {
   }
 }
 
-/* ============================================
-   LEGACY — giữ để không phá các trang cũ
-   ============================================ */
-.split-screen {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-}
-@media (min-width: 768px) {
-  .split-screen {
-    grid-template-columns: 1fr 1.2fr;
-  }
-}
-
 .status-badge {
   display: inline-flex;
   align-items: center;

@@ -86,10 +86,10 @@ exports.createClaim = (req, res) => {
 
       const normalizedDescription =
         typeof description === "string" ? description.trim() : "";
-      if (normalizedDescription.length < 10) {
+      if (!normalizedDescription) {
         return res
           .status(400)
-          .json({ error: "Mo ta xac minh can it nhat 10 ky tu." });
+          .json({ error: "Mo ta xac minh khong duoc de trong." });
       }
       if (normalizedDescription.length > 1000) {
         return res

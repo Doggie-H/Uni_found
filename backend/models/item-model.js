@@ -12,7 +12,6 @@ const itemSchema = new mongoose.Schema(
     description: { type: String, default: "" },
     brand: { type: String, default: "" },
     color: { type: String, default: "" },
-    distinctive_features: { type: String, default: "" },
     contact_info: { type: String, default: "" },
     location: { type: String, required: true, trim: true },
     lost_at: { type: String, default: null },

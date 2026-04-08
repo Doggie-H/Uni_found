@@ -36,6 +36,7 @@ const ItemDetail = () => {
   const [claimDesc, setClaimDesc] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [activeImageError, setActiveImageError] = useState(false);
   const [actionNotice, setActionNotice] = useState("");
 
   useEffect(() => {
@@ -54,15 +55,20 @@ const ItemDetail = () => {
 
   useEffect(() => {
     setActiveImageIndex(0);
+    setActiveImageError(false);
   }, [item]);
+
+  useEffect(() => {
+    setActiveImageError(false);
+  }, [activeImageIndex]);
 
   const handleClaimSubmit = async (e) => {
     e.preventDefault();
-    if (!claimDesc || claimDesc.trim().length < 10) {
+    if (!claimDesc || !claimDesc.trim()) {
       alert(
         item?.post_type === "LOST"
-          ? "Vui lòng mô tả cách bạn đã nhặt được món đồ này (ít nhất 10 ký tự)."
-          : "Vui lòng mô tả chi tiết để xác minh đây là đồ của bạn (ít nhất 10 ký tự).",
+          ? "Vui lòng mô tả cách bạn đã nhặt được món đồ này."
+          : "Vui lòng mô tả chi tiết để xác minh đây là đồ của bạn.",
       );
       return;
     }
@@ -130,6 +136,7 @@ const ItemDetail = () => {
   const itemImageUrls = getItemImageUrls(item);
   const activeImageUrl =
     itemImageUrls[activeImageIndex] || getPrimaryItemImage(item);
+  const showActiveImage = activeImageUrl && !activeImageError;
 
   return (
     <div className="container page-shell" style={{ paddingTop: "2rem" }}>
@@ -143,11 +150,15 @@ const ItemDetail = () => {
 
       <div className="detail-layout">
         <div className="detail-image-wrap">
-          {activeImageUrl ? (
+          {showActiveImage ? (
             <div
               style={{ width: "100%", height: "100%", position: "relative" }}
             >
-              <img src={activeImageUrl} alt={item.title} />
+              <img
+                src={activeImageUrl}
+                alt={item.title}
+                onError={() => setActiveImageError(true)}
+              />
               <div
                 style={{
                   position: "absolute",
@@ -218,6 +229,9 @@ const ItemDetail = () => {
                       <img
                         src={url}
                         alt={`${item.title} - ảnh ${index + 1}`}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
                         style={{
                           width: "100%",
                           height: "100%",
@@ -450,25 +464,6 @@ const ItemDetail = () => {
               </div>
             </div>
           </div>
-
-          {item.distinctive_features ? (
-            <div
-              style={{
-                marginBottom: "1.2rem",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "10px",
-                padding: "10px 12px",
-                color: "var(--prose)",
-                fontSize: "0.92rem",
-              }}
-            >
-              <strong style={{ color: "var(--ink)" }}>
-                Đặc điểm nhận dạng:
-              </strong>{" "}
-              {item.distinctive_features}
-            </div>
-          ) : null}
 
           {Array.isArray(item.category_checklist) &&
           item.category_checklist.length ? (

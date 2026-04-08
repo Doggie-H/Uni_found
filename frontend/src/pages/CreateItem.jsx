@@ -44,10 +44,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 const PHONE_RE = /(?:\+84|0)(?:3|5|7|8|9)\d{8}\b/;
 const URL_RE = /^https?:\/\//i;
 const ITEM_IMAGE_MAX_COUNT = 5;
-const DESCRIPTION_MIN_LENGTH = 20;
-const DESCRIPTION_MAX_LENGTH = 1500;
-const FEATURES_MIN_LENGTH = 10;
-const FEATURES_MAX_LENGTH = 1000;
 
 const CreateItem = () => {
   const { user } = useContext(AuthContext);
@@ -61,7 +57,6 @@ const CreateItem = () => {
     description: "",
     brand: "",
     color: "",
-    distinctive_features: "",
     contact_info: "",
     location: "",
     lost_at: "",
@@ -195,38 +190,11 @@ const CreateItem = () => {
 
     const selectedDate =
       formData.post_type === "LOST" ? formData.lost_at : formData.found_at;
+    const normalizedTitle = (formData.title || "").trim();
+    const normalizedLocation = (formData.location || "").trim();
 
-    if (!formData.title || !formData.location || !selectedDate) {
+    if (!normalizedTitle || !normalizedLocation || !selectedDate) {
       setError("Vui lòng điền đủ Tên vật phẩm, Vị trí và Thời điểm.");
-      return;
-    }
-
-    const descriptionLength = (formData.description || "").trim().length;
-    if (descriptionLength < DESCRIPTION_MIN_LENGTH) {
-      setError(`Mô tả chi tiết cần ít nhất ${DESCRIPTION_MIN_LENGTH} ký tự.`);
-      return;
-    }
-    if (descriptionLength > DESCRIPTION_MAX_LENGTH) {
-      setError(
-        `Mô tả chi tiết tối đa ${DESCRIPTION_MAX_LENGTH} ký tự. Vui lòng rút gọn nội dung.`,
-      );
-      return;
-    }
-
-    const featuresLength = (formData.distinctive_features || "").trim().length;
-    if (featuresLength < FEATURES_MIN_LENGTH) {
-      setError(`Đặc điểm nhận dạng cần ít nhất ${FEATURES_MIN_LENGTH} ký tự.`);
-      return;
-    }
-    if (featuresLength > FEATURES_MAX_LENGTH) {
-      setError(
-        `Đặc điểm nhận dạng tối đa ${FEATURES_MAX_LENGTH} ký tự. Vui lòng rút gọn nội dung.`,
-      );
-      return;
-    }
-
-    if ((formData.contact_info || "").trim().length < 8) {
-      setError("Thông tin liên hệ cần ít nhất 8 ký tự.");
       return;
     }
 
@@ -249,16 +217,15 @@ const CreateItem = () => {
     setLoading(true);
     try {
       const payload = new FormData();
-      payload.append("title", formData.title);
+      payload.append("title", normalizedTitle);
       payload.append("post_type", formData.post_type);
       payload.append("category", formData.category);
       payload.append("custody_type", formData.custody_type);
       payload.append("description", formData.description);
       payload.append("brand", formData.brand);
       payload.append("color", formData.color);
-      payload.append("distinctive_features", formData.distinctive_features);
       payload.append("contact_info", formData.contact_info);
-      payload.append("location", formData.location);
+      payload.append("location", normalizedLocation);
       payload.append("lost_at", formData.lost_at || "");
       payload.append("found_at", formData.found_at || "");
       payload.append("date_lost_found", selectedDate);
@@ -558,54 +525,13 @@ const CreateItem = () => {
                 className="input-field"
                 placeholder={
                   formData.post_type === "FOUND"
-                    ? "Mô tả bối cảnh nhặt được, tình trạng đồ và vật dụng đi kèm..."
-                    : "Mô tả lúc để mất: hoàn cảnh, thời điểm, chi tiết giúp nhận diện..."
+                    ? "Mô tả tình trạng đồ, đặc điểm sản phẩm và vật dụng đi kèm..."
+                    : "Mô tả lúc để mất: thời điểm, đặc điểm sản phẩm và chi tiết giúp nhận diện..."
                 }
                 rows="4"
-                maxLength={DESCRIPTION_MAX_LENGTH}
                 value={formData.description}
                 onChange={handleChange}
               ></textarea>
-              <div
-                style={{
-                  marginTop: "6px",
-                  fontSize: "0.8rem",
-                  color: "var(--muted)",
-                }}
-              >
-                Từ {DESCRIPTION_MIN_LENGTH} đến {DESCRIPTION_MAX_LENGTH} ký tự.
-                Đã nhập {(formData.description || "").length}/
-                {DESCRIPTION_MAX_LENGTH}.
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label
-                style={{ display: "flex", alignItems: "center", gap: "6px" }}
-              >
-                <Tag size={16} color="var(--amber)" /> Đặc điểm nhận dạng nổi
-                bật
-              </label>
-              <textarea
-                name="distinctive_features"
-                className="input-field"
-                placeholder="vd: trầy góc phải, có dán sticker hình mèo, trong ví có thẻ ATM màu xanh..."
-                rows="3"
-                maxLength={FEATURES_MAX_LENGTH}
-                value={formData.distinctive_features}
-                onChange={handleChange}
-              ></textarea>
-              <div
-                style={{
-                  marginTop: "6px",
-                  fontSize: "0.8rem",
-                  color: "var(--muted)",
-                }}
-              >
-                Từ {FEATURES_MIN_LENGTH} đến {FEATURES_MAX_LENGTH} ký tự. Đã
-                nhập {(formData.distinctive_features || "").length}/
-                {FEATURES_MAX_LENGTH}.
-              </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: "1.2rem" }}>
@@ -749,9 +675,9 @@ const CreateItem = () => {
                 đối chiếu nhanh.
               </li>
               <li>
-                Luôn ghi ít nhất 1-2{" "}
-                <strong>đặc điểm nhận dạng độc nhất</strong>, nhưng tránh công
-                khai toàn bộ thông tin bí mật.
+                Nếu có thể, hãy ghi <strong>đặc điểm nhận dạng độc nhất</strong>
+                để người xem đối chiếu nhanh hơn, nhưng tránh công khai toàn bộ
+                thông tin bí mật.
               </li>
               <li>
                 Ảnh chụp tổng quan. Đừng cố zoom vào thông tin cá nhân của họ.
