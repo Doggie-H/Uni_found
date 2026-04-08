@@ -1,18 +1,50 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import axiosClient from "../api/axios-client";
 import {
   LogOut,
   PlusCircle,
   Shield,
   MessageCircle,
   ClipboardList,
+  Bell,
 } from "lucide-react";
 import BrandMark from "../components/ui/BrandMark";
 
 const MainLayout = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+
+    let mounted = true;
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await axiosClient.get("/notifications", {
+          params: { unreadOnly: true, page: 1, limit: 1 },
+        });
+        if (mounted) {
+          setUnreadCount(Number(res.data?.unreadCount || 0));
+        }
+      } catch {
+        if (mounted) setUnreadCount(0);
+      }
+    };
+
+    fetchUnreadCount();
+    const timer = setInterval(fetchUnreadCount, 15000);
+
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -150,6 +182,39 @@ const MainLayout = () => {
                 >
                   <MessageCircle size={14} /> Nhắn tin
                 </button>
+
+                <Link
+                  to="/notifications"
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    textDecoration: "none",
+                    position: "relative",
+                  }}
+                >
+                  <Bell size={14} /> Thông báo
+                  {unreadCount > 0 ? (
+                    <span
+                      style={{
+                        minWidth: "18px",
+                        height: "18px",
+                        borderRadius: "999px",
+                        background: "var(--red)",
+                        color: "#fff",
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 5px",
+                      }}
+                    >
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  ) : null}
+                </Link>
 
                 <Link
                   to="/my-posts"

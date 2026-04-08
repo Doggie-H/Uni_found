@@ -81,7 +81,6 @@ const ItemDetail = () => {
       );
       setShowClaimForm(false);
       setClaimDesc("");
-      alert("Tính năng Nhắn tin đang phát triển (Coming Soon).");
     } catch (error) {
       console.error(error);
       alert(getApiErrorMessage(error, "Không thể gửi yêu cầu."));
@@ -641,7 +640,7 @@ const ItemDetail = () => {
                     onChange={(e) => setClaimDesc(e.target.value)}
                     style={{ marginBottom: "1.5rem" }}
                   ></textarea>
-                  <div style={{ display: "flex", gap: "1rem" }}>
+                  <div className="ui-actions">
                     <button
                       type="button"
                       className="btn btn-ghost"
@@ -649,14 +648,12 @@ const ItemDetail = () => {
                         setShowClaimForm(false);
                         setActionNotice("");
                       }}
-                      style={{ flex: "1" }}
                     >
                       Hủy
                     </button>
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      style={{ flex: "2", padding: "1.2rem" }}
                       disabled={submitting}
                     >
                       {submitting ? "ĐANG GỬI..." : "GỬI YÊU CẦU TRAO ĐỔI"}

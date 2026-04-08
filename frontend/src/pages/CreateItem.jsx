@@ -11,6 +11,8 @@ import {
   Tag,
   AlertCircle,
   Phone,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import getApiErrorMessage from "../utils/get-api-error-message";
 
@@ -72,6 +74,9 @@ const CreateItem = () => {
   const [loading, setLoading] = useState(false);
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
+  const [activePreviewIndex, setActivePreviewIndex] = useState(0);
+  const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
+  const [previewLoadError, setPreviewLoadError] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -80,6 +85,10 @@ const CreateItem = () => {
       });
     };
   }, [imagePreviewUrls]);
+
+  useEffect(() => {
+    setPreviewLoadError(false);
+  }, [activePreviewIndex, imagePreviewUrls, formData.image_url]);
 
   if (!user) {
     return (
@@ -162,8 +171,21 @@ const CreateItem = () => {
     const previews = mergedFiles.map((file) => URL.createObjectURL(file));
     setImageFiles(mergedFiles);
     setImagePreviewUrls(previews);
+    setActivePreviewIndex(0);
+    setPrimaryImageIndex(0);
+    setPreviewLoadError(false);
     setFormData((prev) => ({ ...prev, image_url: "" }));
     e.target.value = "";
+  };
+
+  const handlePreviewStep = (direction) => {
+    if (imagePreviewUrls.length <= 1) return;
+    setActivePreviewIndex((prev) => {
+      if (direction === "next") {
+        return (prev + 1) % imagePreviewUrls.length;
+      }
+      return (prev - 1 + imagePreviewUrls.length) % imagePreviewUrls.length;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -241,7 +263,18 @@ const CreateItem = () => {
       payload.append("found_at", formData.found_at || "");
       payload.append("date_lost_found", selectedDate);
       if (formData.image_url) payload.append("image_url", formData.image_url);
-      imageFiles.forEach((file) => payload.append("images", file));
+
+      const orderedImageFiles =
+        imageFiles.length > 0
+          ? [
+              imageFiles[primaryImageIndex] || imageFiles[0],
+              ...imageFiles.filter(
+                (_file, index) => index !== (primaryImageIndex || 0),
+              ),
+            ]
+          : [];
+
+      orderedImageFiles.forEach((file) => payload.append("images", file));
 
       await axiosClient.post("/items", payload, {
         headers: {
@@ -613,9 +646,25 @@ const CreateItem = () => {
                     marginTop: "6px",
                     fontSize: "0.8rem",
                     color: "var(--muted)",
+                    display: "grid",
+                    gap: "6px",
                   }}
                 >
-                  Đã chọn {imageFiles.length} ảnh.
+                  <div>Đã chọn {imageFiles.length} ảnh.</div>
+                  <div>
+                    {imageFiles
+                      .slice(0, 3)
+                      .map((file) => file.name)
+                      .join(" • ")}
+                    {imageFiles.length > 3
+                      ? ` • +${imageFiles.length - 3} ảnh khác`
+                      : ""}
+                  </div>
+                  <div style={{ color: "var(--blue)" }}>
+                    Nếu ô chọn file hiển thị "No file chosen" thì vẫn bình
+                    thường, hệ thống đã lưu danh sách ảnh ở trên để bạn chọn
+                    thêm nhiều lần.
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -641,6 +690,9 @@ const CreateItem = () => {
                       if (url.startsWith("blob:")) URL.revokeObjectURL(url);
                     });
                     setImagePreviewUrls([]);
+                    setActivePreviewIndex(0);
+                    setPrimaryImageIndex(0);
+                    setPreviewLoadError(false);
                   }
                 }}
               />
@@ -658,7 +710,6 @@ const CreateItem = () => {
                 type="submit"
                 className="btn btn-danger"
                 disabled={loading}
-                style={{ flex: 1.3 }}
               >
                 {loading
                   ? "Đang gửi thông tin..."
@@ -728,6 +779,7 @@ const CreateItem = () => {
             <div
               className="ui-media"
               style={{
+                position: "relative",
                 padding:
                   imagePreviewUrls.length > 0 || formData.image_url
                     ? "0"
@@ -735,16 +787,72 @@ const CreateItem = () => {
               }}
             >
               {imagePreviewUrls.length > 0 || formData.image_url ? (
-                <img
-                  src={imagePreviewUrls[0] || formData.image_url}
-                  alt="Preview"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    e.target.parentNode.innerHTML =
-                      '<span style="color:var(--red); font-weight: 700">Link ảnh bị hỏng</span>';
-                  }}
-                />
+                <>
+                  {!previewLoadError ? (
+                    <img
+                      src={
+                        imagePreviewUrls[activePreviewIndex] ||
+                        imagePreviewUrls[0] ||
+                        formData.image_url
+                      }
+                      alt="Preview"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                      onError={() => setPreviewLoadError(true)}
+                    />
+                  ) : (
+                    <div style={{ textAlign: "center", color: "var(--red)" }}>
+                      <span style={{ fontWeight: 700 }}>Link ảnh bị hỏng</span>
+                    </div>
+                  )}
+
+                  {imagePreviewUrls.length > 1 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handlePreviewStep("prev")}
+                        className="btn btn-ghost btn-sm"
+                        style={{
+                          position: "absolute",
+                          left: "10px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          borderRadius: "999px",
+                          minWidth: "36px",
+                          height: "36px",
+                          padding: "0",
+                          background: "rgba(255,255,255,0.9)",
+                        }}
+                        aria-label="Ảnh trước"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handlePreviewStep("next")}
+                        className="btn btn-ghost btn-sm"
+                        style={{
+                          position: "absolute",
+                          right: "10px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          borderRadius: "999px",
+                          minWidth: "36px",
+                          height: "36px",
+                          padding: "0",
+                          background: "rgba(255,255,255,0.9)",
+                        }}
+                        aria-label="Ảnh sau"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </>
+                  ) : null}
+                </>
               ) : (
                 <div style={{ textAlign: "center", color: "var(--muted)" }}>
                   <Camera
@@ -755,6 +863,98 @@ const CreateItem = () => {
                 </div>
               )}
             </div>
+
+            {imagePreviewUrls.length > 0 ? (
+              <div
+                style={{
+                  marginTop: "10px",
+                  display: "flex",
+                  gap: "8px",
+                  overflowX: "auto",
+                }}
+              >
+                {imagePreviewUrls.map((url, index) => (
+                  <button
+                    key={`${url}-${index}`}
+                    type="button"
+                    onClick={() => setActivePreviewIndex(index)}
+                    style={{
+                      width: "58px",
+                      height: "58px",
+                      borderRadius: "10px",
+                      border:
+                        index === activePreviewIndex
+                          ? "2px solid var(--blue)"
+                          : "1px solid var(--border)",
+                      overflow: "hidden",
+                      padding: 0,
+                      flexShrink: 0,
+                      background: "var(--white)",
+                      position: "relative",
+                    }}
+                    aria-label={`Xem ảnh ${index + 1}`}
+                  >
+                    <img
+                      src={url}
+                      alt={`thumb-${index + 1}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                    {index === primaryImageIndex ? (
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: "4px",
+                          bottom: "4px",
+                          background: "rgba(29,107,243,0.92)",
+                          color: "#fff",
+                          borderRadius: "6px",
+                          padding: "1px 5px",
+                          fontSize: "0.62rem",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Chính
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {imagePreviewUrls.length > 1 ? (
+              <div
+                style={{
+                  marginTop: "8px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "var(--muted)",
+                  }}
+                >
+                  Ảnh chính hiện tại: #{primaryImageIndex + 1}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={activePreviewIndex === primaryImageIndex}
+                  onClick={() => setPrimaryImageIndex(activePreviewIndex)}
+                >
+                  Đặt ảnh này làm ảnh chính
+                </button>
+              </div>
+            ) : null}
+
             {imagePreviewUrls.length > 1 ? (
               <div
                 style={{

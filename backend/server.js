@@ -12,6 +12,7 @@ const itemRoutes = require("./routes/item-routes");
 const claimRoutes = require("./routes/claim-routes");
 const userRoutes = require("./routes/user-routes");
 const messageRoutes = require("./routes/message-routes");
+const notificationRoutes = require("./routes/notification-routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +47,7 @@ app.use("/api/items", itemRoutes);
 app.use("/api/claims", claimRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error("Unhandled error:", err);

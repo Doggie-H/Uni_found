@@ -1,9 +1,12 @@
 const mongoose = require("mongoose");
 const Claim = require("../models/claim-model");
 const Item = require("../models/item-model");
-const User = require("../models/user-model");
 const Conversation = require("../models/conversation-model");
 const Message = require("../models/message-model");
+const {
+  createNotificationForUser,
+  notifyAdmins,
+} = require("../utils/notification-service");
 
 const toSafeInt = (value, fallback) => {
   const parsed = Number.parseInt(value, 10);
@@ -139,12 +142,39 @@ exports.createClaim = (req, res) => {
         body: initialUserMessage,
       });
 
+      let notificationSent = false;
+      try {
+        const notification = await createNotificationForUser({
+          userId: item.user_id,
+          type: isLostPost ? "FOUND_MATCH" : "CLAIM_REQUEST",
+          title: isLostPost
+            ? "Có người nhặt được vật phẩm bạn đang tìm"
+            : "Có người yêu cầu nhận lại vật phẩm",
+          body: isLostPost
+            ? `${item.title || "Vật phẩm"}: đã có người báo nhặt được và gửi thông tin xác minh.`
+            : `${item.title || "Vật phẩm"}: có người gửi yêu cầu nhận lại kèm bằng chứng xác minh.`,
+          meta: {
+            item_id: item._id.toString(),
+            claim_id: newClaim._id.toString(),
+            actor_user_id: req.user.id,
+          },
+        });
+        notificationSent = Boolean(notification);
+      } catch (notifyError) {
+        console.warn("Notification create failed:", notifyError.message);
+      }
+
       return res.status(201).json({
         message: isLostPost
-          ? "Da gui thong bao co nguoi nhat duoc vat pham ban dang tim."
-          : "Da gui yeu cau nhan lai vat pham kem bang chung.",
+          ? notificationSent
+            ? "Da gui thong bao co nguoi nhat duoc vat pham ban dang tim."
+            : "Da ghi nhan thong tin nguoi nhat duoc vat pham. Thong bao se duoc dong bo tiep."
+          : notificationSent
+            ? "Da gui yeu cau nhan lai vat pham kem bang chung."
+            : "Da ghi nhan yeu cau nhan lai vat pham. Thong bao se duoc dong bo tiep.",
         claim_id: newClaim._id.toString(),
         conversation_id: conversation?._id?.toString?.() || null,
+        notification_sent: notificationSent,
       });
     })
     .catch((err) => {
@@ -236,7 +266,7 @@ exports.confirmReturn = (req, res) => {
   }
 
   Claim.findById(id)
-    .populate("item_id", "user_id status")
+    .populate("item_id", "user_id status title")
     .then(async (claim) => {
       if (!claim) {
         return res.status(404).json({ error: "Claim not found" });
@@ -268,6 +298,7 @@ exports.confirmReturn = (req, res) => {
         .select("_id")
         .lean();
 
+      let adminNotified = false;
       if (claim.seeker_confirmed && claim.holder_confirmed) {
         claim.status = "RETURN_CONFIRMED";
         claim.returned_confirmed_at = new Date();
@@ -292,6 +323,21 @@ exports.confirmReturn = (req, res) => {
             "Thong bao admin: Vat pham da duoc hoan tra thanh cong.",
           );
         }
+
+        try {
+          const notifiedCount = await notifyAdmins({
+            type: "RETURN_CONFIRMED",
+            title: "Vật phẩm đã được hoàn trả",
+            body: `${item.title || "Vật phẩm"} đã được xác nhận hoàn trả thành công.`,
+            meta: {
+              item_id: item._id.toString(),
+              claim_id: claim._id.toString(),
+            },
+          });
+          adminNotified = notifiedCount > 0;
+        } catch (notifyError) {
+          console.warn("Admin notification failed:", notifyError.message);
+        }
       }
 
       await claim.save();
@@ -299,7 +345,9 @@ exports.confirmReturn = (req, res) => {
       return res.json({
         message:
           claim.status === "RETURN_CONFIRMED"
-            ? "Da xac nhan hoan tra. Admin da nhan thong bao vat pham da duoc hoan tra."
+            ? adminNotified
+              ? "Da xac nhan hoan tra. Admin da nhan thong bao vat pham da duoc hoan tra."
+              : "Da xac nhan hoan tra. Thong bao admin se duoc dong bo tiep."
             : "Da ghi nhan xac nhan cua ban.",
         claim: {
           id: claim._id.toString(),
@@ -308,6 +356,7 @@ exports.confirmReturn = (req, res) => {
           holder_confirmed: claim.holder_confirmed,
           returned_confirmed_at: claim.returned_confirmed_at,
         },
+        admin_notified: adminNotified,
       });
     })
     .catch((err) => res.status(500).json({ error: err.message }));

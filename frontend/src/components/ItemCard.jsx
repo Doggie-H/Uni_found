@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { MapPin, Image as ImageIcon, Tag, Clock } from "lucide-react";
-import { getItemImageCount, getPrimaryItemImage } from "../utils/item-images";
+import { getItemImageUrls } from "../utils/item-images";
 
 const normalizeCategory = (value) => {
   const raw = (value || "").toString().trim();
@@ -69,8 +69,25 @@ const TimeChip = ({ dateStr, createdAt }) => {
 };
 
 const ItemCard = ({ item }) => {
-  const primaryImageUrl = getPrimaryItemImage(item);
-  const imageCount = getItemImageCount(item);
+  const imageUrls = useMemo(() => getItemImageUrls(item), [item]);
+  const [imageIndex, setImageIndex] = useState(0);
+  const imageCount = imageUrls.length;
+  const primaryImageUrl =
+    imageIndex >= 0 && imageIndex < imageUrls.length
+      ? imageUrls[imageIndex]
+      : null;
+
+  useEffect(() => {
+    setImageIndex(0);
+  }, [item?.id, imageCount]);
+
+  const handleImageError = () => {
+    setImageIndex((prev) => {
+      if (prev < imageUrls.length - 1) return prev + 1;
+      return -1;
+    });
+  };
+
   const isLostPost = item.post_type === "LOST";
   const ownerLabel = isLostPost ? "Người báo mất" : "Người nhặt được";
   const ownerName =
@@ -95,7 +112,11 @@ const ItemCard = ({ item }) => {
             <div
               style={{ width: "100%", height: "100%", position: "relative" }}
             >
-              <img src={primaryImageUrl} alt={item.title} />
+              <img
+                src={primaryImageUrl}
+                alt={item.title}
+                onError={handleImageError}
+              />
               {imageCount > 1 ? (
                 <span
                   className="status-pill status-pill-live"

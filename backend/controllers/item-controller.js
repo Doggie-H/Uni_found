@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Item = require("../models/item-model");
 const Claim = require("../models/claim-model");
+const { notifyAdmins } = require("../utils/notification-service");
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const toSafeInt = (value, fallback) => {
@@ -65,6 +66,42 @@ const canonicalizeCategory = (value) => {
   return raw;
 };
 
+const getServerOrigin = (req) => {
+  const configured =
+    typeof process.env.BACKEND_PUBLIC_URL === "string"
+      ? process.env.BACKEND_PUBLIC_URL.trim()
+      : "";
+
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+
+  return `${req.protocol}://${req.get("host")}`;
+};
+
+const normalizeImageUrlForClient = (rawUrl, req) => {
+  if (typeof rawUrl !== "string") return "";
+  const value = rawUrl.trim();
+  if (!value) return "";
+
+  const origin = getServerOrigin(req);
+
+  if (value.startsWith("/uploads/")) {
+    return `${origin}${value}`;
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.pathname.startsWith("/uploads/")) {
+      return `${origin}${parsed.pathname}`;
+    }
+  } catch {
+    // Keep original URL when it is not a valid absolute URL.
+  }
+
+  return value;
+};
+
 const isValidContactInfo = (value) => {
   if (typeof value !== "string") return false;
   const trimmed = value.trim();
@@ -116,7 +153,7 @@ const toPostedBy = (userRef) => {
   };
 };
 
-const toClientItem = (item) => ({
+const toClientItem = (item, req) => ({
   id: item._id.toString(),
   title: item.title,
   post_type: item.post_type || "FOUND",
@@ -133,11 +170,17 @@ const toClientItem = (item) => ({
     : [],
   location: item.location,
   date_lost_found: item.date_lost_found,
-  image_url: item.image_url || item.image_urls?.[0] || null,
+  image_url:
+    normalizeImageUrlForClient(
+      item.image_url || item.image_urls?.[0] || "",
+      req,
+    ) || null,
   image_urls: Array.isArray(item.image_urls)
     ? item.image_urls
+        .map((url) => normalizeImageUrlForClient(url, req))
+        .filter(Boolean)
     : item.image_url
-      ? [item.image_url]
+      ? [normalizeImageUrlForClient(item.image_url, req)].filter(Boolean)
       : [],
   custody_type: item.custody_type || "FINDER",
   status: item.status,
@@ -198,7 +241,7 @@ exports.getItems = (req, res) => {
       .populate("user_id", "username full_name khoa nganh khoa_hoc")
       .sort(sort)
       .lean()
-      .then((rows) => res.json(rows.map(toClientItem)))
+      .then((rows) => res.json(rows.map((row) => toClientItem(row, req))))
       .catch((err) => res.status(500).json({ error: err.message }));
   }
 
@@ -213,7 +256,7 @@ exports.getItems = (req, res) => {
   ])
     .then(([rows, total]) =>
       res.json({
-        data: rows.map(toClientItem),
+        data: rows.map((row) => toClientItem(row, req)),
         pagination: {
           page: safePage,
           limit: safeLimit,
@@ -237,7 +280,7 @@ exports.getItemDetail = (req, res) => {
     .lean()
     .then((row) => {
       if (!row) return res.status(404).json({ message: "Khong tim thay item" });
-      return res.json(toClientItem(row));
+      return res.json(toClientItem(row, req));
     })
     .catch((err) => res.status(500).json({ error: err.message }));
 };
@@ -318,8 +361,7 @@ exports.createItem = (req, res) => {
   ].slice(0, ITEM_IMAGE_MAX_COUNT);
 
   const uploadedImageUrls = uploadedFiles.map(
-    (file) =>
-      `${req.protocol}://${req.get("host")}/uploads/items/${file.filename}`,
+    (file) => `/uploads/items/${file.filename}`,
   );
 
   const manualImageUrl =
@@ -481,7 +523,7 @@ exports.getPendingItems = (req, res) => {
     .populate("user_id", "username full_name khoa nganh khoa_hoc")
     .sort({ created_at: -1 })
     .lean()
-    .then((rows) => res.json(rows.map(toClientItem)))
+    .then((rows) => res.json(rows.map((row) => toClientItem(row, req))))
     .catch((err) => res.status(500).json({ error: err.message }));
 };
 
@@ -507,7 +549,7 @@ exports.getMyItems = (req, res) => {
     .populate("user_id", "username full_name khoa nganh khoa_hoc")
     .sort({ created_at: -1 })
     .lean()
-    .then((rows) => res.json(rows.map(toClientItem)))
+    .then((rows) => res.json(rows.map((row) => toClientItem(row, req))))
     .catch((err) => res.status(500).json({ error: err.message }));
 };
 
@@ -536,6 +578,7 @@ exports.updateMyItemStatus = (req, res) => {
       await item.save();
 
       let affectedClaims = 0;
+      let adminNotified = false;
       if (status === "RETURNED") {
         const now = new Date();
         const updateResult = await Claim.updateMany(
@@ -550,15 +593,33 @@ exports.updateMyItemStatus = (req, res) => {
           },
         );
         affectedClaims = updateResult.modifiedCount || 0;
+
+        try {
+          const notifiedCount = await notifyAdmins({
+            type: "RETURN_CONFIRMED",
+            title: "Vật phẩm đã được hoàn trả",
+            body: `${item.title || "Vật phẩm"} đã được đánh dấu hoàn trả bởi người đăng bài.`,
+            meta: {
+              item_id: item._id.toString(),
+              actor_user_id: req.user.id,
+              affected_claims: affectedClaims,
+            },
+          });
+          adminNotified = notifiedCount > 0;
+        } catch (notifyError) {
+          console.warn("Admin notification failed:", notifyError.message);
+        }
       }
 
       return res.json({
         message:
           status === "RETURNED"
-            ? "Da xac nhan hoan tra va gui thong bao den admin."
+            ? adminNotified
+              ? "Da xac nhan hoan tra va gui thong bao den admin."
+              : "Da xac nhan hoan tra. Thong bao admin se duoc dong bo tiep."
             : "Da cap nhat trang thai",
         item_id: item._id.toString(),
-        admin_notified: status === "RETURNED",
+        admin_notified: adminNotified,
         affected_claims: affectedClaims,
       });
     })
