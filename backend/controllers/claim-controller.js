@@ -288,6 +288,20 @@ exports.confirmReturn = (req, res) => {
           .json({ error: "Ban khong co quyen xac nhan claim nay." });
       }
 
+      if (claim.status === "RETURN_CONFIRMED") {
+        return res.json({
+          message: "Claim nay da duoc xac nhan hoan tra.",
+          claim: {
+            id: claim._id.toString(),
+            status: claim.status,
+            seeker_confirmed: claim.seeker_confirmed,
+            holder_confirmed: claim.holder_confirmed,
+            returned_confirmed_at: claim.returned_confirmed_at,
+          },
+          admin_notified: false,
+        });
+      }
+
       if (isSeeker) claim.seeker_confirmed = true;
       if (isHolder) claim.holder_confirmed = true;
 

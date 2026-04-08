@@ -9,7 +9,6 @@ const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/Login"));
 const CreateItem = lazy(() => import("./pages/CreateItem"));
 const ItemDetail = lazy(() => import("./pages/ItemDetail"));
-const Messages = lazy(() => import("./pages/Messages"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const MyPosts = lazy(() => import("./pages/MyPosts"));
 const Admin = lazy(() => import("./pages/Admin"));
@@ -99,7 +98,6 @@ function App() {
               <Route path="login" element={<Login />} />
               <Route path="create-item" element={<CreateItem />} />
               <Route path="item/:id" element={<ItemDetail />} />
-              <Route path="messages" element={<Messages />} />
               <Route path="notifications" element={<Notifications />} />
               <Route path="my-posts" element={<MyPosts />} />
             </Route>
