@@ -2,45 +2,13 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 
 const Item = require("../models/item-model");
+const { buildItemImagePresets } = require("../utils/item-image-presets");
 
 const mongoUri =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/lostandfound";
 
-const TARGET_IMAGE_COUNT = 3;
-
-const slugifySeed = (value) => {
-  const base = String(value || "item")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return base || "item";
-};
-
 const normalizeImages = (item) => {
-  const existing = Array.isArray(item.image_urls) ? item.image_urls : [];
-  const primaryImage =
-    typeof item.image_url === "string" && item.image_url.trim()
-      ? item.image_url.trim()
-      : existing[0] || "";
-  const seed = slugifySeed(item.title || item._id.toString());
-  const generated = [];
-
-  if (primaryImage) {
-    generated.push(primaryImage);
-  } else {
-    generated.push(`https://picsum.photos/seed/${seed}-primary/900/600`);
-  }
-
-  let index = 2;
-  while (generated.length < TARGET_IMAGE_COUNT) {
-    generated.push(`https://picsum.photos/seed/${seed}-${index}/900/600`);
-    index += 1;
-  }
-
-  return Array.from(new Set(generated)).slice(0, TARGET_IMAGE_COUNT);
+  return buildItemImagePresets(item);
 };
 
 async function main() {
@@ -52,8 +20,11 @@ async function main() {
   for (const item of items) {
     const nextImages = normalizeImages(item);
     const currentImages = Array.isArray(item.image_urls) ? item.image_urls : [];
+    const currentPrimary =
+      typeof item.image_url === "string" ? item.image_url.trim() : "";
 
     const isDifferent =
+      currentPrimary !== nextImages[0] ||
       nextImages.length !== currentImages.length ||
       nextImages.some((url, index) => currentImages[index] !== url);
 

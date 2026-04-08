@@ -8,6 +8,7 @@ const Claim = require("./models/claim-model");
 const Conversation = require("./models/conversation-model");
 const Message = require("./models/message-model");
 const Visit = require("./models/visit-model");
+const { buildItemImagePresets } = require("./utils/item-image-presets");
 
 const mongoUri =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/lostandfound";
@@ -118,6 +119,31 @@ async function seedChatDemo() {
   const linhSeeker = createdUsers.find((u) => u.username === "3120322009");
   const huyPoster = createdUsers.find((u) => u.username === "3110123022");
 
+  const airpodsImages = buildItemImagePresets({
+    title: "Tai nghe AirPods Pro",
+    category: "Đồ Điện Tử",
+  });
+  const walletImages = buildItemImagePresets({
+    title: "Ví da đen",
+    category: "Ví/Giấy tờ",
+  });
+  const laptopImages = buildItemImagePresets({
+    title: "Laptop Dell XPS 13",
+    category: "Đồ Điện Tử",
+  });
+  const studentCardImages = buildItemImagePresets({
+    title: "Mất thẻ sinh viên UED",
+    category: "Căn cước/Thẻ",
+  });
+  const backpackImages = buildItemImagePresets({
+    title: "Mất balo đen",
+    category: "Khác",
+  });
+  const keyImages = buildItemImagePresets({
+    title: "Thẻ xe và chìa khóa",
+    category: "Chìa Khoá",
+  });
+
   const items = await Item.insertMany([
     {
       title: "Tai nghe AirPods Pro",
@@ -131,12 +157,8 @@ async function seedChatDemo() {
       location: "Sân bóng đá mini",
       date_lost_found: todayYMD(2),
       found_at: createDate(2, 17, 30).toISOString(),
-      image_url: "https://picsum.photos/seed/chat-airpods/900/600",
-      image_urls: [
-        "https://picsum.photos/seed/chat-airpods/900/600",
-        "https://picsum.photos/seed/chat-airpods-side/900/600",
-        "https://picsum.photos/seed/chat-airpods-case/900/600",
-      ],
+      image_url: airpodsImages[0],
+      image_urls: airpodsImages,
       custody_type: "FINDER",
       status: "FOUND",
       user_id: anFinder._id,
@@ -154,12 +176,8 @@ async function seedChatDemo() {
       location: "Giảng đường A - tầng 2",
       date_lost_found: todayYMD(1),
       found_at: createDate(1, 10, 45).toISOString(),
-      image_url: "https://picsum.photos/seed/chat-wallet/900/600",
-      image_urls: [
-        "https://picsum.photos/seed/chat-wallet/900/600",
-        "https://picsum.photos/seed/chat-wallet-open/900/600",
-        "https://picsum.photos/seed/chat-wallet-card/900/600",
-      ],
+      image_url: walletImages[0],
+      image_urls: walletImages,
       custody_type: "ADMIN",
       status: "FOUND",
       user_id: baoFinder._id,
@@ -177,12 +195,8 @@ async function seedChatDemo() {
       location: "Phòng máy tính",
       date_lost_found: todayYMD(5),
       found_at: createDate(5, 14, 0).toISOString(),
-      image_url: "https://picsum.photos/seed/chat-laptop/900/600",
-      image_urls: [
-        "https://picsum.photos/seed/chat-laptop/900/600",
-        "https://picsum.photos/seed/chat-laptop-keyboard/900/600",
-        "https://picsum.photos/seed/chat-laptop-cover/900/600",
-      ],
+      image_url: laptopImages[0],
+      image_urls: laptopImages,
       custody_type: "ADMIN",
       status: "RETURNED",
       returned_at: createDate(1, 16, 30),
@@ -200,12 +214,8 @@ async function seedChatDemo() {
       location: "Thư viện trung tâm",
       date_lost_found: todayYMD(3),
       lost_at: createDate(3, 9, 30).toISOString(),
-      image_url: "https://picsum.photos/seed/chat-student-card-lost/900/600",
-      image_urls: [
-        "https://picsum.photos/seed/chat-student-card-lost/900/600",
-        "https://picsum.photos/seed/chat-student-card-front/900/600",
-        "https://picsum.photos/seed/chat-student-card-back/900/600",
-      ],
+      image_url: studentCardImages[0],
+      image_urls: studentCardImages,
       custody_type: "FINDER",
       status: "FOUND",
       user_id: haSeeker._id,
@@ -222,12 +232,8 @@ async function seedChatDemo() {
       location: "Sảnh nhà A",
       date_lost_found: todayYMD(4),
       lost_at: createDate(4, 8, 10).toISOString(),
-      image_url: "https://picsum.photos/seed/chat-backpack-lost/900/600",
-      image_urls: [
-        "https://picsum.photos/seed/chat-backpack-lost/900/600",
-        "https://picsum.photos/seed/chat-backpack-pocket/900/600",
-        "https://picsum.photos/seed/chat-backpack-zipper/900/600",
-      ],
+      image_url: backpackImages[0],
+      image_urls: backpackImages,
       custody_type: "FINDER",
       status: "FOUND",
       user_id: linhSeeker._id,
@@ -244,12 +250,8 @@ async function seedChatDemo() {
       location: "Bãi giữ xe sinh viên",
       date_lost_found: todayYMD(0),
       found_at: createDate(0, 12, 20).toISOString(),
-      image_url: "https://picsum.photos/seed/chat-key/900/600",
-      image_urls: [
-        "https://picsum.photos/seed/chat-key/900/600",
-        "https://picsum.photos/seed/chat-keyring/900/600",
-        "https://picsum.photos/seed/chat-key-detail/900/600",
-      ],
+      image_url: keyImages[0],
+      image_urls: keyImages,
       custody_type: "FINDER",
       status: "FOUND",
       user_id: huyPoster._id,
